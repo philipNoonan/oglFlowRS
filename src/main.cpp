@@ -269,15 +269,19 @@ int main(int, char**)
 		{
 			cv::Size poseSize = poses.size();
 
-			for (int persons = 0; persons < poses.size[1]; persons++)
+			std::vector<std::vector<float>> bpp(poseSize.height, std::vector<float>(poseSize.width * 3));
+
+			for (int person = 0; person < poseSize.height; person++)
 			{
-				for (int part = 0; part < poses.size[0]; part++)
+				
+				for (int part = 0; part < poseSize.width; part++)
 				{
-					auto x = poses.at<cv::Vec3f>(part, persons)[0]; 
-					auto y = poses.at<cv::Vec3f>(part, persons)[1];
-					auto confidence = poses.at<cv::Vec3f>(part, persons)[2];
+					bpp[person][part * 3] = poses.at<cv::Vec3f>(person, part)[0]; 
+					bpp[person][part * 3 + 1] = poses.at<cv::Vec3f>(person, part)[1];
+					bpp[person][part * 3 + 2] = poses.at<cv::Vec3f>(person, part)[2];
 					//std::cout << "x : " << x << " y : " << y << std::endl;
 				}
+				grender.setBodyPosePoints(bpp);
 			}
 		}
 

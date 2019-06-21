@@ -16,6 +16,7 @@ layout(binding = 5, rg16i) uniform iimage3D volumeData; // texel access
 in vec2 TexCoord;
 in float zDepth;
 in vec2 stdDev;
+in float dropVertex;
 
 layout(location = 0) out vec4 color;
 
@@ -47,7 +48,7 @@ vec4 fromColor()
 	vec4 tColor = texelFetch(currentTextureColor, ivec2(TexCoord.x * texSize.x, TexCoord.y * texSize.y), texLevel);
 
 	//vec4 tColor = textureLod(currentTextureColor, vec2(TexCoord), texLevel);
-	return vec4(tColor.zyx, 1.0);
+	return vec4(tColor.xxx, 1.0);
 }
 
 
@@ -90,7 +91,14 @@ vec4 fromEdges()
 subroutine(getColor)
 vec4 fromPoints()
 {
-	return vec4(0.03f, 0.98, 0.02f, 1.0);
+	if (dropVertex != 0.0f)
+	{
+		return vec4(0.0f, 0.0f, 0.0f, 0.0f);
+	}
+	else
+	{
+		return vec4(0.03f, 0.98, 0.02f, 1.0);
+	}
 }
 
 subroutine(getColor)

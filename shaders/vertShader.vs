@@ -30,6 +30,7 @@ uniform float zOff;
 out vec2 TexCoord;
 out float zDepth;
 out vec2 stdDev;
+out float dropVertex;
 
 subroutine vec4 getPosition();
 subroutine uniform getPosition getPositionSubroutine;
@@ -73,9 +74,19 @@ vec4 fromPosition2D()
 subroutine(getPosition)
 vec4 fromPosePoints2D()
 {
-    gl_PointSize = 3;//
-	zDepth = posePoints.z;
-	return vec4(MVP * vec4(posePoints.x, imSize.y - posePoints.y, 0.0f, 1.0f));
+    gl_PointSize = 10;//
+	//zDepth = posePoints.z;
+	if (posePoints.x == 0 || posePoints.y == 0 || posePoints.z < 0.05f)
+	{
+		dropVertex = 1.0f;
+	}
+	else
+	{
+		dropVertex = 0.0f;
+	}
+
+	return vec4(vec4(posePoints.x / 424.0 - 1.0, 1.0f - posePoints.y / 240.0f, -0.4f, 1.0f));
+
 }
 
 subroutine(getPosition)

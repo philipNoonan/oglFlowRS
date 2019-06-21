@@ -203,7 +203,7 @@ void gRender::allocateBuffers()
 	//glVertexAttribIPointer(11, 1, GL_FLOAT, 4 * sizeof(float), (GLvoid*)0);
 	//glVertexAttribDivisor(11, 1); // IMPORTANT https://learnopengl.com/Advanced-OpenGL/Instancing
 
-	glBindVertexArray(0);
+	//glBindVertexArray(0);
 
 	// FOR FLOW DENSIFICATION
 	//glGenVertexArrays(1, &m_VAO_FLOW);
@@ -213,8 +213,41 @@ void gRender::allocateBuffers()
 	//glBufferData(GL_ARRAY_BUFFER, m_standard_verts.size() * sizeof(float), &m_standard_verts[0], GL_DYNAMIC_DRAW);
 	//glBindVertexArray(0);
 
+	std::vector<float> bodyPosePoints(21*3, 0.75);
+
+	std::vector<uint32_t> bodyPosePairs = { 1, 8, 1, 2, 1,
+						        5, 2, 3, 3, 4,
+						        5, 6, 6, 7, 8,
+						        9, 9, 10, 10, 11,
+						        8, 12, 12, 13, 13,
+						        14, 1, 0, 0, 15,
+						        15, 17, 0, 16, 16,
+						        18, 1, 19, 19, 20,
+						        2, 9, 5, 12 };
+
+	glGenVertexArrays(1, &m_poseVAO);
+    glGenBuffers(1, &m_poseVBO);
+	glGenBuffers(1, &m_poseEBO);
+
+	glBindVertexArray(m_poseVAO);
+
+	//// standard verts
+	glBindBuffer(GL_ARRAY_BUFFER, m_poseVBO);
+	glBufferData(GL_ARRAY_BUFFER, 21 * 3 * sizeof(float), NULL, GL_DYNAMIC_DRAW);
+	//// EBO
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_poseEBO);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, bodyPosePairs.size() * sizeof(unsigned int), &bodyPosePairs[0], GL_DYNAMIC_DRAW);
+	//
+	glVertexAttribPointer(9, 3, GL_FLOAT, GL_FALSE, 0, (GLvoid*)0);
+	glEnableVertexAttribArray(9);
+
+	glBindVertexArray(0);
 
 
+	//glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (GLvoid*)0);
+	//glEnableVertexAttribArray(0);
+	//glBindVertexArray(0);
+	//glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 }
 
@@ -422,43 +455,10 @@ void gRender::setProjectionMatrix()
 
 void gRender::renderLiveVideoWindow(bool useInfrared)
 {
-	//if (m_showFlowFlag)
-	//{
-
-	//if (frameCount == 99)
-	//{
-
-	//	glCopyImageSubData(m_textureColor, GL_TEXTURE_2D, 0, 0, 0, 0,
-	//		m_texturePreviousColour, GL_TEXTURE_2D, 0, 0, 0, 0,
-	//		m_color_width, m_color_height, 1);
-
-	//	cv::Mat prevCol = cv::Mat(m_color_height, m_color_width, CV_8UC4);
-
-	//	glActiveTexture(GL_TEXTURE0);
-	//	glBindTexture(GL_TEXTURE_2D, m_texturePreviousColour);
-	//	glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, prevCol.data);
-	//	glBindTexture(GL_TEXTURE_2D, 0);
-	//	glActiveTexture(0);
-
-	//	cv::imshow("prevCol", prevCol);
-	//	cv::waitKey(1);
-
-	//}
-	//if (frameCount == 100)
-	//{
-	//	frameCount = 0;
 
 
 
 
-	//}
-	//frameCount++;
-
-
-	//}
-
-	//else
-	//{
 
 		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		renderProg.use();
@@ -620,17 +620,37 @@ void gRender::renderLiveVideoWindow(bool useInfrared)
 
 		if (m_showPointFlag)
 		{
-			renderFlowLinesProg.use();
-			glBindVertexArray(m_VAO_FLOW);
-			//MVP = m_view * m_model_color;
+			glBindVertexArray(m_poseVAO);
+			//glBindVertexArray(m_VAO);
 
-			//MVP = glm::translate(MVP, glm::vec3(0.0f, 0.0f, 0.5f));
-			glActiveTexture(GL_TEXTURE0);
-			glBindTexture(GL_TEXTURE_2D, m_textureFlow);
-			//glUniformMatrix4fv(m_MvpFlowID, 1, GL_FALSE, glm::value_ptr(MVP));
+			glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
 
-			glDrawArraysInstanced(GL_POINTS, 0, 1, 1920 * 1080 / 16);
+			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_poseEBO);
+			glUniformSubroutinesuiv(GL_VERTEX_SHADER, 1, &m_fromPosePoints2DID);
+			glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &m_fromPointsID);
+
+			for (int person = 0; person < m_bodyPosePoints.size(); person++)
+			{
+				glBindBuffer(GL_ARRAY_BUFFER, m_poseVBO);
+				glBufferSubData(GL_ARRAY_BUFFER, 0, m_bodyPosePoints[person].size() * sizeof(float), m_bodyPosePoints[person].data());
+				glDrawElements(GL_LINES, 44, GL_UNSIGNED_INT, 0);
+				glDrawArrays(GL_POINTS, 0, m_bodyPosePoints[person].size() / 3);
+
+			}
+			
+
+
 		}
+
+
+
+
+
+
+
+
+
+
 
 
 

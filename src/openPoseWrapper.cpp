@@ -50,31 +50,10 @@ void OPWrapper::capturingLoop()
 	int scaleNumber = 1;
 	float scaleGap = 0.3f;
 
-	//const op::WrapperStructPose wrapperStructPose{ poseMode, netInputSize, outputSize,
-	//	scaleMode, -1, 0, scaleNumber, scaleGap, op::RenderMode::Auto,
-	//	poseModel, true, 0.6f, 0.6f, 0, "models/", {}, heatMapScaleMode,
-	//	false, 0.05f, -1, false, -1.0, "", "", 0.0f, false };
-	//
-	//opWrapper.configure(wrapperStructPose);
-
-	//const op::WrapperStructExtra wrapperStructExtra{ false, -1, false, 1, 0 };
-
-	//opWrapper.configure(wrapperStructExtra);
-
-	//const op::WrapperStructGui wrapperStructGui{ op::DisplayMode::Display2D, false, false };
-
-	//opWrapper.configure(wrapperStructGui);
-
-	//opWrapper.start();
-
-	//const op::PoseTracker poseTracker{ poseModel, 1 };
-
-
-
 	op::ScaleAndSizeExtractor scaleAndSizeExtractor(netInputSize, outputSize, scaleNumber, scaleGap);
 
 	op::PoseExtractorCaffeStaf poseExtractorCaffeStaf{ poseModel, "D://models//", 0 };
-	op::PoseCpuRenderer poseRenderer{ poseModel, 0.7f, true, 0.6f };
+	op::PoseCpuRenderer poseRenderer{ poseModel, 0.05f, true, 0.05f };
 
 	op::CvMatToOpInput cvMatToOpInput;
 	op::CvMatToOpOutput cvMatToOpOutput;
@@ -83,6 +62,8 @@ void OPWrapper::capturingLoop()
 
 	poseExtractorCaffeStaf.initializationOnThread();
 	poseRenderer.initializationOnThread();
+
+	op::GuiInfoAdder guiInfoAdder{ 1, true };
 
 
 
@@ -104,7 +85,7 @@ void OPWrapper::capturingLoop()
 		poseExtractorCaffeStaf.forwardPass(netInputArray, imageSize, scaleInputToNetInputs);
 
 		const auto poseKeypoints = poseExtractorCaffeStaf.getPoseKeypoints();
-
+		const auto poseIds = poseExtractorCaffeStaf.getPoseIds();
 
 		auto poses = poseExtractorCaffeStaf.getPoseKeypoints().clone();
 
@@ -112,16 +93,18 @@ void OPWrapper::capturingLoop()
 		m_detectedKeyPointsPose = poses.getConstCvMat().clone();
 		m_mtx.unlock();
 
-		poseRenderer.renderPose(outputArray, poseKeypoints, scaleInputToOutput);
+		//poseRenderer.renderPose(outputArray, poseKeypoints, scaleInputToOutput, -1.0f, poseIds);
 
 		// Step 5 - Render poseKeypoints
 		// poseRenderer.renderPose(outputArray, poseKeypoints, scaleInputToOutput);
 		// Step 6 - OpenPose output format to cv::Mat
-		auto outputImage = opOutputToCvMat.formatToCvMat(outputArray);
+		//auto outputImage = opOutputToCvMat.formatToCvMat(outputArray);
 
-		cv::imshow("points", outputImage);
+		//guiInfoAdder.addInfo(outputImage, 69, 8008, "sup bros", 8008135, poseIds, poseKeypoints);
+		
+		//cv::imshow("points", outputImage);
 
-		cv::waitKey(1);
+		//cv::waitKey(1);
 
 		{
 			//using namespace std::chrono_literals;

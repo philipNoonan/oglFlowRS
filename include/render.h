@@ -169,6 +169,10 @@ public:
 		m_texLevel = lvl;
 	}
 
+	void setBodyPosePoints(std::vector<std::vector<float>> bpp)
+	{
+		m_bodyPosePoints = bpp;
+	}
 
 private:
 
@@ -192,6 +196,10 @@ private:
 	GLuint m_VBO_FLOW;
 	GLuint m_textureDensifiedFlow;
 	GLuint m_RBO_FLOW;
+
+	GLuint m_poseVAO;
+	GLuint m_poseVBO;
+	GLuint m_poseEBO;
 
 	GLuint m_VAO_MC;
 	GLuint m_VBO_Vert_MC;
@@ -345,5 +353,7 @@ private:
 
 
 	int m_texLevel = 0;
+
+	std::vector<std::vector<float>> m_bodyPosePoints;
 
 };
