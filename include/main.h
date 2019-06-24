@@ -13,11 +13,14 @@
 #define GLFW_INCLUDE_GLU
 #include <GLFW/glfw3.h>
 #include <deque>
+#include <valarray>
+#include <map>
 
 //#include "openCVStuff.h"
 #include "flow.h"
 #include "flood.h"
 #include "render.h"
+#include "respiration.h"
 
 #include "opencv2/core/utility.hpp"
 #include "opencv2/highgui.hpp"
@@ -41,6 +44,12 @@ gRender grender;
 gFlow gflow;
 
 gFlood gflood;
+
+Respiration respiration;
+
+//int trackedPerson::idCounter = -1;
+//
+//std::vector<trackedPerson> trackedPeople;
 
 OPWrapper opwrapper;
 
@@ -218,4 +227,7 @@ bool m_justFlowFace = false;
 
 cv::VideoWriter outWriter;
 
+float windowWidth = 10.0f;
+// [person][frame][part]
+std::map<int, std::deque<std::valarray<float>>> rollingAverage;
 

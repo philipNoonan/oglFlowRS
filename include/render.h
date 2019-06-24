@@ -26,6 +26,7 @@
 #include <fstream>
 
 #include <vector>
+#include <valarray>
 #include <list>
 #include <numeric>
 #include <algorithm>
@@ -169,9 +170,13 @@ public:
 		m_texLevel = lvl;
 	}
 
-	void setBodyPosePoints(std::vector<std::vector<float>> bpp)
+	void setBodyPosePoints(std::vector<std::valarray<float>> bpp)
 	{
-		m_bodyPosePoints = bpp;
+		m_bodyPosePoints.resize(bpp.size());
+		for (int person = 0; person < bpp.size(); person++)
+		{
+			m_bodyPosePoints[person].assign(std::begin(bpp[person]), std::end(bpp[person]));
+		}
 	}
 
 private:

@@ -195,6 +195,10 @@ int main(int, char**)
 	resetFlowSize();
 	gRenderInit();
 
+	respiration.init();
+	respiration.setDepthTexture(gflow.getDepthTexture());
+	respiration.setFlowTexture(gflow.getFlowTexture());
+
 	//gflow.setNumLevels(colorFrameSize[0].x);
 	//gflow.setTextureParameters(colorFrameSize[0].x, colorFrameSize[0].y);
 	//gflow.allocateTextures(col.channels());
@@ -211,6 +215,12 @@ int main(int, char**)
 	gflood.allocateBuffers();
 
 	opwrapper.start();
+
+	//rollingAverage.resize(windowWidth);
+    // [person][frame][part]
+	// rollingAverage.resize(15, std::deque<std::valarray<float>> (windowWidth, std::valarray<float>(63)));
+
+
 
 
 	double lastTime = glfwGetTime();
@@ -264,28 +274,102 @@ int main(int, char**)
 		}
 			
 		//std::cout << opwrapper.getPoses() << std::endl;
-		cv::Mat poses = opwrapper.getPoses().clone();
+		cv::Mat poses;
+		std::vector<int> poseIds;
+		opwrapper.getPoses(poses, poseIds);
+
 		if (!poses.empty())
 		{
 			cv::Size poseSize = poses.size();
 
-			std::vector<std::vector<float>> bpp(poseSize.height, std::vector<float>(poseSize.width * 3));
+			std::vector<std::valarray<float>> bpp(poseSize.height, std::valarray<float>(poseSize.width * 3));
+			std::vector<std::valarray<float>> RA(poseSize.height, std::valarray<float>(poseSize.width * 3));
+			std::vector<glm::vec2> neckPos(poseSize.height);
 
 			for (int person = 0; person < poseSize.height; person++)
 			{
-				
+				//std::cout << "id : " << poseIds[person] << std::endl;
 				for (int part = 0; part < poseSize.width; part++)
 				{
-					bpp[person][part * 3] = poses.at<cv::Vec3f>(person, part)[0]; 
-					bpp[person][part * 3 + 1] = poses.at<cv::Vec3f>(person, part)[1];
-					bpp[person][part * 3 + 2] = poses.at<cv::Vec3f>(person, part)[2];
+					if (poses.at<cv::Vec3f>(person, part)[2] > 0)
+					{
+						bpp[person][part * 3] = poses.at<cv::Vec3f>(person, part)[0];
+						bpp[person][part * 3 + 1] = poses.at<cv::Vec3f>(person, part)[1];
+						bpp[person][part * 3 + 2] = poses.at<cv::Vec3f>(person, part)[2];
+					}
+					else // get the last frames position
+					{
+						auto it = rollingAverage.find(poseIds[person]);
+						if (it != rollingAverage.end())
+						{
+							bpp[person][part * 3] = it->second[0][part * 3];
+							bpp[person][part * 3 + 1] = it->second[0][part * 3 + 1];
+							bpp[person][part * 3 + 2] = 0; // reduce the weighting of these points
+						}
+						else
+						{
+							bpp[person][part * 3] = 0;
+							bpp[person][part * 3 + 1] = 0;
+							bpp[person][part * 3 + 2] = 0;
+						}
+
+					}
+
 					//std::cout << "x : " << x << " y : " << y << std::endl;
+
 				}
-				grender.setBodyPosePoints(bpp);
+
+				auto it = rollingAverage.find(poseIds[person]);
+				// person already in map
+				if (it != rollingAverage.end())
+				{
+					it->second.push_front(bpp[person]);
+					if (it->second.size() > windowWidth)
+					{
+						it->second.pop_back();
+					}
+
+					for (std::deque<std::valarray<float>>::iterator dit = it->second.begin(); dit != it->second.end(); dit++)
+					{
+						RA[person] += *dit;
+					}
+
+					RA[person] /= windowWidth;
+
+					neckPos[person] = glm::vec2(RA[person][1 * 3], RA[person][1 * 3 + 1] + 50.0f);
+
+					
+				}
+				else // add person to map
+				{
+					std::deque<std::valarray<float>> tempbpp(windowWidth, bpp[person]);
+					rollingAverage.insert(std::pair<int, std::deque<std::valarray<float>>> (poseIds[person], tempbpp));
+				}
+				//rollingAverage[poseIDs[person]].push_front(bpp[person]);
+
+				// [person][frame][part]
+
 			}
+
+			grender.setBodyPosePoints(RA);
+			respiration.setTarget(neckPos);
+
 		}
 
+		respiration.calc();
 
+		float neckDepth = respiration.getFromDepth();
+		float neckFlow = respiration.getFromFlow();
+
+		//if (neckDepth != 0.0f)
+		//{
+		//	respiration.smoothSignal(neckDepth, "depth");
+		//}
+
+		if (neckFlow != 0.0f)
+		{
+			respiration.smoothSignal(neckFlow, "flow");
+		}
 
 			glfwPollEvents();
 			ImGui_ImplGlfwGL3_NewFrame();

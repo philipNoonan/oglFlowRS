@@ -30,9 +30,10 @@ public:
 	void setImage(cv::Mat image);
 	void stop();
 
-	cv::Mat getPoses()
+	void getPoses(cv::Mat &poses, std::vector<int> &poseIds)
 	{
-		return m_detectedKeyPointsPose;
+		poses = m_detectedKeyPointsPose;
+		poseIds = m_detectedPoseIds;
 	}
 
 
@@ -44,6 +45,7 @@ private:
 	std::mutex m_mtx;
 	cv::Mat m_inputImage;
 	cv::Mat m_detectedKeyPointsPose;
+	std::vector<int> m_detectedPoseIds;
 };
 
 

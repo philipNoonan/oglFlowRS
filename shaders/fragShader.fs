@@ -38,7 +38,15 @@ vec4 fromDepth()
 {
     ivec2 texSize = textureSize(currentTextureDepth, texLevel);
 	vec4 tColor = texelFetch(currentTextureDepth, ivec2(TexCoord.x * texSize.x, TexCoord.y * texSize.y), texLevel);
-	return vec4(tColor.x, tColor.x, tColor.x, 1.0f);
+	
+	//if (tColor.x < 0.25)
+	//{
+		return vec4(tColor.x, tColor.x, tColor.x, 1.0f);
+	//}
+	//else
+	//{
+	//	return vec4(0,0,0, 1.0f);
+	//}
 }
 
 subroutine(getColor)
@@ -93,7 +101,7 @@ vec4 fromPoints()
 {
 	if (dropVertex != 0.0f)
 	{
-		return vec4(0.0f, 0.0f, 0.0f, 0.0f);
+		discard;
 	}
 	else
 	{
