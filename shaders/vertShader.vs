@@ -85,7 +85,7 @@ vec4 fromPosePoints2D()
 		dropVertex = 0.0f;
 	}
 
-	return vec4(vec4(posePoints.x / 424.0 - 1.0, 1.0f - posePoints.y / 240.0f, -0.4f, 1.0f));
+	return vec4(vec4(posePoints.x / 640.0 - 1.0, 1.0f - posePoints.y / 360.0f, -0.4f, 1.0f));
 
 }
 

@@ -5,7 +5,7 @@
 #include <iostream>
 #include <fstream>
 #include <thread>
-
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 
 #include <librealsense2/rs.hpp> // Include RealSense Cross Platform API

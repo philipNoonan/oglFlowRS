@@ -105,53 +105,53 @@ void Realsense2Camera::setStreams()
 		std::cout << "  - " << it->first.first << " #" << it->first.second << std::endl;
 	}
 
-	////////Next, we go over all the stream profiles and print the details of each one
-	//std::cout << "depth provides the following stream profiles:" << std::endl;
-	//int profile_num = 0;
-	//for (rs2::stream_profile stream_profile : m_stream_profiles_depthIR)
-	//{
-	//	rs2_stream stream_data_type = stream_profile.stream_type();
-	//	int stream_index = stream_profile.stream_index();
-	//	std::string stream_name = stream_profile.stream_name();
-	//	int unique_stream_id = stream_profile.unique_id(); // The unique identifier can be used for comparing two streams
-	//	std::cout << std::setw(3) << profile_num << ": " << stream_data_type << " #" << stream_index;
-	//	if (stream_profile.is<rs2::video_stream_profile>()) //"Is" will test if the type tested is of the type given
-	//	{
-	//		rs2::video_stream_profile video_stream_profile = stream_profile.as<rs2::video_stream_profile>();
-	//		std::cout << " (Video Stream: " << video_stream_profile.format() << " " <<
-	//			video_stream_profile.width() << "x" << video_stream_profile.height() << "@ " << video_stream_profile.fps() << "Hz)";
-	//	}
-	//	std::cout << std::endl;
-	//	profile_num++;
-	//}
+	//////Next, we go over all the stream profiles and print the details of each one
+	std::cout << "depth provides the following stream profiles:" << std::endl;
+	int profile_num = 0;
+	for (rs2::stream_profile stream_profile : m_stream_profiles_depthIR)
+	{
+		rs2_stream stream_data_type = stream_profile.stream_type();
+		int stream_index = stream_profile.stream_index();
+		std::string stream_name = stream_profile.stream_name();
+		int unique_stream_id = stream_profile.unique_id(); // The unique identifier can be used for comparing two streams
+		std::cout << std::setw(3) << profile_num << ": " << stream_data_type << " #" << stream_index;
+		if (stream_profile.is<rs2::video_stream_profile>()) //"Is" will test if the type tested is of the type given
+		{
+			rs2::video_stream_profile video_stream_profile = stream_profile.as<rs2::video_stream_profile>();
+			std::cout << " (Video Stream: " << video_stream_profile.format() << " " <<
+				video_stream_profile.width() << "x" << video_stream_profile.height() << "@ " << video_stream_profile.fps() << "Hz)";
+		}
+		std::cout << std::endl;
+		profile_num++;
+	}
 
-	////Next, we go over all the stream profiles and print the details of each one
-	//std::cout << "color provides the following stream profiles:" << std::endl;
-	//int colprofile_num = 0;
-	//for (rs2::stream_profile stream_profile : m_stream_profiles_color)
-	//{
-	//	rs2_stream stream_data_type = stream_profile.stream_type();
-	//	int stream_index = stream_profile.stream_index();
-	//	std::string stream_name = stream_profile.stream_name();
-	//	int unique_stream_id = stream_profile.unique_id(); // The unique identifier can be used for comparing two streams
-	//	std::cout << std::setw(3) << colprofile_num << ": " << stream_data_type << " #" << stream_index;
-	//	if (stream_profile.is<rs2::video_stream_profile>()) //"Is" will test if the type tested is of the type given
-	//	{
-	//		rs2::video_stream_profile video_stream_profile = stream_profile.as<rs2::video_stream_profile>();
-	//		std::cout << " (Video Stream: " << video_stream_profile.format() << " " <<
-	//			video_stream_profile.width() << "x" << video_stream_profile.height() << "@ " << video_stream_profile.fps() << "Hz)";
-	//	}
-	//	std::cout << std::endl;
-	//	colprofile_num++;
-	//}
+	//Next, we go over all the stream profiles and print the details of each one
+	std::cout << "color provides the following stream profiles:" << std::endl;
+	int colprofile_num = 0;
+	for (rs2::stream_profile stream_profile : m_stream_profiles_color)
+	{
+		rs2_stream stream_data_type = stream_profile.stream_type();
+		int stream_index = stream_profile.stream_index();
+		std::string stream_name = stream_profile.stream_name();
+		int unique_stream_id = stream_profile.unique_id(); // The unique identifier can be used for comparing two streams
+		std::cout << std::setw(3) << colprofile_num << ": " << stream_data_type << " #" << stream_index;
+		if (stream_profile.is<rs2::video_stream_profile>()) //"Is" will test if the type tested is of the type given
+		{
+			rs2::video_stream_profile video_stream_profile = stream_profile.as<rs2::video_stream_profile>();
+			std::cout << " (Video Stream: " << video_stream_profile.format() << " " <<
+				video_stream_profile.width() << "x" << video_stream_profile.height() << "@ " << video_stream_profile.fps() << "Hz)";
+		}
+		std::cout << std::endl;
+		colprofile_num++;
+	}
 
 }
 
 void Realsense2Camera::setSensorOptions()
 {
 	// depth
-	m_sensors[0].set_option(RS2_OPTION_EXPOSURE, 4000);
-	m_sensors[0].set_option(RS2_OPTION_ENABLE_AUTO_EXPOSURE, 0);
+	// m_sensors[0].set_option(RS2_OPTION_EXPOSURE, 4000);
+	m_sensors[0].set_option(RS2_OPTION_ENABLE_AUTO_EXPOSURE, 1);
 	// rcolor
 	m_sensors[1].set_option(RS2_OPTION_EXPOSURE, 200);
 	m_sensors[1].set_option(RS2_OPTION_ENABLE_AUTO_EXPOSURE, 0);
@@ -174,11 +174,10 @@ void Realsense2Camera::setEmitterOptions(float status, float power)
 
 bool Realsense2Camera::start()
 {
-		m_sensors[1].open(m_stream_profiles_color[m_colorStreamChoice]); //848 480 60fps rgb8
-		std::thread colThread = std::thread(&Realsense2Camera::colorThread, this, std::ref(m_sensors[1]));
-		colThread.detach();
+		//m_sensors[1].open(m_stream_profiles_color[m_colorStreamChoice]); //848 480 60fps rgb8
+		//std::thread colThread = std::thread(&Realsense2Camera::colorThread, this, std::ref(m_sensors[1]));
 
-		std::vector<rs2::stream_profile> sp = { m_stream_profiles_depthIR[15], m_stream_profiles_depthIR[m_depthStreamChoice] };
+		std::vector<rs2::stream_profile> sp = { m_stream_profiles_depthIR[10], m_stream_profiles_depthIR[m_depthStreamChoice] };
 		//std::vector<rs2::stream_profile> sp = { m_stream_profiles_depthIR[35], m_stream_profiles_depthIR[m_depthStreamChoice] };
 
 		m_sensors[0].open(sp); // depth 848*480@90
@@ -219,7 +218,7 @@ void Realsense2Camera::capturingColor(rs2::frame &f)
 {
 	m_colorQueue.enqueue(f);
 }
-void Realsense2Camera::depthThread(rs2::sensor& sens)
+const void Realsense2Camera::depthThread(rs2::sensor& sens)
 {
 	sens.start([&](rs2::frame f) {this->capturingDepth(f); });
 }
@@ -227,7 +226,7 @@ void Realsense2Camera::infraThread(rs2::sensor& sens)
 {
 	sens.start([&](rs2::frame f) {this->capturingInfra(f); });
 }
-void Realsense2Camera::colorThread(rs2::sensor &sens)
+const void Realsense2Camera::colorThread(rs2::sensor &sens)
 {
 	sens.start([&](rs2::frame f) {this->capturingColor(f); });
 }

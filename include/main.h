@@ -4,7 +4,7 @@
 
 #define GL_GPU_MEM_INFO_TOTAL_AVAILABLE_MEM_NVX 0x9048
 #define GL_GPU_MEM_INFO_CURRENT_AVAILABLE_MEM_NVX 0x9049
-
+#define GLM_ENABLE_EXPERIMENTAL
 #include <stdio.h>
 #include <iostream>
 #define GLUT_NO_LIB_PRAGMA
@@ -100,9 +100,9 @@ int colorHeight;
 bool showDepthFlag = false;
 bool showBigDepthFlag = false;
 bool showInfraFlag = false;
-bool showColorFlag = false;
+bool showColorFlag = true;
 bool showLightFlag = false;
-bool showPointFlag = false;
+bool showPointFlag = true;
 bool useOpenPoseFlag = false;
 bool pauseOpenFlowFlag = false;
 bool pauseFlowFlag = false;
@@ -123,7 +123,7 @@ float vertFov = 40.0f;
 
 float valA = 0.01f;
 float valB = 0.01f;
-int texLevel = 0;
+int texLevel = 1;
 int cutoff = 0;
 
 bool useWebcamFlag = 1;
@@ -224,10 +224,12 @@ bool m_useOPFace = false;
 
 bool m_justFlowFace = false;
 
+bool useDelayFlag = true;
+bool useFullResoFlag = false;
 
 cv::VideoWriter outWriter;
 
-float windowWidth = 10.0f;
+float windowWidth = 1.0f;
 // [person][frame][part]
 std::map<int, std::deque<std::valarray<float>>> rollingAverage;
 

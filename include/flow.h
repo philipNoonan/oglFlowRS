@@ -3,7 +3,7 @@
 #include <GL/glew.h>
 #define GLFW_INCLUDE_GLU
 #include <GLFW/glfw3.h>
-
+#define GLM_ENABLE_EXPERIMENTAL
 #include "glutils.h"
 #include "glslprogram.h"
 
@@ -140,6 +140,18 @@ public:
 	}
 
 	bool firstFrame = true;
+
+	void setLevelCutoff(bool fullreso)
+	{
+		if (fullreso)
+		{
+			m_levelCutoff = -1;
+		}
+		else
+		{
+			m_levelCutoff = 0;
+		}
+	}
 
 private:
 
@@ -363,6 +375,8 @@ private:
 	bool flipflop = false;
 
 	uint32_t m_cutoff;
+
+	int m_levelCutoff = -1;
 
 	uint32_t m_quadlistCount;
 

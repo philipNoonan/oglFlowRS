@@ -39,8 +39,8 @@ void OPWrapper::stop()
 void OPWrapper::capturingLoop()
 {
 	op::Point<int> outputSize(-1, -1);
-	op::Point<int> netInputSize(240, 240);
-	op::Point<int> faceNetInputSize(368, 368);
+	op::Point<int> netInputSize(192, 192);
+	//op::Point<int> faceNetInputSize(368, 368);
 
 	op::Wrapper opWrapper{ op::ThreadManagerMode::Synchronous };
 	op::PoseMode poseMode(op::PoseMode::Enabled);
@@ -53,7 +53,7 @@ void OPWrapper::capturingLoop()
 
 	op::ScaleAndSizeExtractor scaleAndSizeExtractor(netInputSize, outputSize, scaleNumber, scaleGap);
 
-	op::PoseExtractorCaffeStaf poseExtractorCaffeStaf{ poseModel, "D://models//", 0 };
+	op::PoseExtractorCaffeStaf poseExtractorCaffeStaf{ poseModel, "/home/mocat/code/models/", 0 };
 	//op::PoseCpuRenderer poseRenderer{ poseModel, 0.05f, true, 0.05f };
 
 	//op::FaceExtractorCaffe faceExtractorCaffe{ faceNetInputSize , faceNetInputSize, "D://models//", 0 , {}, op::ScaleMode::UnsignedChar, false };
@@ -131,8 +131,7 @@ void OPWrapper::capturingLoop()
 		//cv::waitKey(1);
 
 		{
-			//using namespace std::chrono_literals;
-			//std::this_thread::sleep_for(0.15s);
+			std::this_thread::sleep_for(std::chrono::milliseconds(m_delay));
 
 		}
 	}

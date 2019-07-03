@@ -3,7 +3,7 @@
 #include <GL/glew.h>
 #define GLFW_INCLUDE_GLU
 #include <GLFW/glfw3.h>
-
+#define GLM_ENABLE_EXPERIMENTAL
 #include "glutils.h"
 #include "glslprogram.h"
 
@@ -12,7 +12,6 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
-#include <Windows.h>
 #include <algorithm>
 
 class gFlood

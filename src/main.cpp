@@ -107,9 +107,9 @@ void resetFlowSize()
 
 	if (numberOfCameras > 0)
 	{
-		depthProfiles.resize(numberOfCameras, 71); // 71 on 435, 211 on 415
-		colorProfiles.resize(numberOfCameras, 61); // 0 1920x1080x30 rgb8 // 13 1920x1080x6 rgb8
-		infraProfiles.resize(numberOfCameras, 15); // 15 on 435 35 on 415
+		depthProfiles.resize(numberOfCameras, 208); // 71 on 435, 211 on 415
+		colorProfiles.resize(numberOfCameras, 66); // 0 1920x1080x30 rgb8 // 13 1920x1080x6 rgb8
+		infraProfiles.resize(numberOfCameras, 10); // 15 on 435 35 on 415
 		depthFrameSize.resize(numberOfCameras);
 		colorFrameSize.resize(numberOfCameras);
 		infraFrameSize.resize(numberOfCameras);
@@ -142,8 +142,8 @@ void resetFlowSize()
 
 	gflow.firstFrame = true;
 	//gflow.clearTexturesAndBuffers();
-	gflow.setNumLevels(colorFrameSize[0].x);
-	gflow.setTextureParameters(colorFrameSize[0].x, colorFrameSize[0].y);
+	gflow.setNumLevels(infraFrameSize[0].x);
+	gflow.setTextureParameters(infraFrameSize[0].x, infraFrameSize[0].y);
 	gflow.allocateTextures(1);
 	gflow.allocateBuffers();
 	gflow.allocateOffscreenRendering();
@@ -250,7 +250,8 @@ int main(int, char**)
 			{
 				opwrapper.setImage(infra);
 			}
-
+			gflow.setLevelCutoff(useFullResoFlag);
+			
 			gflow.calc(true);
 			//gflow.track();
 			if (showQuadsFlag)
@@ -276,6 +277,7 @@ int main(int, char**)
 		//std::cout << opwrapper.getPoses() << std::endl;
 		cv::Mat poses;
 		std::vector<int> poseIds;
+		opwrapper.setUseDelay(useDelayFlag);
 		opwrapper.getPoses(poses, poseIds);
 
 		if (!poses.empty())
@@ -366,10 +368,10 @@ int main(int, char**)
 		//	respiration.smoothSignal(neckDepth, "depth");
 		//}
 
-		if (neckFlow != 0.0f)
-		{
-			respiration.smoothSignal(neckFlow, "flow");
-		}
+		//if (neckFlow != 0.0f)
+		//{
+		//	respiration.smoothSignal(neckFlow, "flow");
+		//}
 
 			glfwPollEvents();
 			ImGui_ImplGlfwGL3_NewFrame();
@@ -433,6 +435,9 @@ int main(int, char**)
 
 				ImGui::Separator();
 				ImGui::Text("Other Options");
+
+				if (ImGui::Button("Use delay")) useDelayFlag ^= 1; ImGui::SameLine(); ImGui::Checkbox("", &useDelayFlag);
+				if (ImGui::Button("Full reso")) useFullResoFlag ^= 1; ImGui::SameLine(); ImGui::Checkbox("", &useFullResoFlag);
 
 				if (ImGui::Button("Reset flow points")) gflow.clearPoints();
 				//if (ImGui::Button("Reset")) OCVStuff.resetColorPoints();

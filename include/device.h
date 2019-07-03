@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <iostream>
 #include <fstream>
+#include <thread>
 
 
 #include "opencv2/core/utility.hpp"
@@ -66,10 +67,10 @@ public:
 	rs2_extrinsics getColorToDepthExtrinsics();
 
 	void capture();
-	void colorThread(rs2::sensor& sens);
+	const void colorThread(rs2::sensor& sens);
 	void capturingColor(rs2::frame &f);
 
-	void depthThread(rs2::sensor& sens);
+	const void depthThread(rs2::sensor& sens);
 	void capturingDepth(rs2::frame &f);
 
 	void infraThread(rs2::sensor& sens);

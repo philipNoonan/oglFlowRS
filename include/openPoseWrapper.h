@@ -29,7 +29,17 @@ public:
 	void start();
 	void setImage(cv::Mat image);
 	void stop();
-
+	void setUseDelay(bool useDelay)
+	{
+		if (useDelay)
+		{
+			m_delay = 150;
+		}
+		else
+		{
+			m_delay = 0;
+		}
+	}
 	void getPoses(cv::Mat &poses, std::vector<int> &poseIds)
 	{
 		poses = m_detectedKeyPointsPose;
@@ -46,6 +56,7 @@ private:
 	cv::Mat m_inputImage;
 	cv::Mat m_detectedKeyPointsPose;
 	std::vector<int> m_detectedPoseIds;
+	int m_delay = 0;
 };
 
 

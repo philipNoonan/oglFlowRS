@@ -16,7 +16,7 @@ GLFWwindow * gRender::loadGLFWWindow()
 	glfwWindowHint(GLFW_RESIZABLE, GL_TRUE);
 	glEnable(GL_DEPTH_TEST);
 
-	m_window = glfwCreateWindow(m_screen_width, m_screen_height, "oglflow", nullptr, nullptr);
+	m_window = glfwCreateWindow(m_screen_width, m_screen_height, "oglflow", glfwGetPrimaryMonitor(), nullptr);
 
 	if (m_window == nullptr)
 	{

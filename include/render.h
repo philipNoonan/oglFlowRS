@@ -3,7 +3,7 @@
 #include <GL/glew.h>
 #define GLFW_INCLUDE_GLU
 #include <GLFW/glfw3.h>
-
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -43,8 +43,8 @@ public:
 	gRender()
 		: m_window()
 		, m_show_imgui(true)
-		, m_screen_height(1080)
-		, m_screen_width(1920)
+		, m_screen_height(480)
+		, m_screen_width(848)
 		, m_depth_height(424)
 		, m_depth_width(512)
 		, m_color_height(1080)
