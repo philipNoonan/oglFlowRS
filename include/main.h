@@ -54,9 +54,11 @@ Respiration respiration;
 OPWrapper opwrapper;
 
 Realsense2Interface cameraInterface;
-std::vector<int> depthProfiles;
-std::vector<int> colorProfiles;
-std::vector<int> infraProfiles;
+std::vector<std::tuple<int, int, int, rs2_format>> depthProfiles;
+std::vector<std::tuple<int, int, int, rs2_format>> colorProfiles;
+std::vector<std::tuple<int, int, int, rs2_format>> infraProfiles;
+
+
 
 std::vector<glm::ivec2> depthFrameSize;
 std::vector<glm::ivec2> colorFrameSize;
@@ -231,3 +233,14 @@ float windowWidth = 10.0f;
 // [person][frame][part]
 std::map<int, std::deque<std::valarray<float>>> rollingAverage;
 
+int frameNumber = 0;
+
+int desiredWidth = 848;
+int desiredHeight = 480;
+int desiredRate = 90;
+
+int desiredColorWidth = 848;
+int desiredColorHeight = 480;
+int desiredColorRate = 30;
+
+int cameraDevice = 0;

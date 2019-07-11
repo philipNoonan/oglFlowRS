@@ -107,16 +107,17 @@ void resetFlowSize()
 
 	if (numberOfCameras > 0)
 	{
-		depthProfiles.resize(numberOfCameras, 71); // 71 on 435, 211 on 415
-		colorProfiles.resize(numberOfCameras, 61); // 0 1920x1080x30 rgb8 // 13 1920x1080x6 rgb8
-		infraProfiles.resize(numberOfCameras, 15); // 15 on 435 35 on 415
+		infraProfiles.resize(numberOfCameras, std::make_tuple(desiredWidth, desiredHeight, desiredRate, RS2_FORMAT_Y8));
+		depthProfiles.resize(numberOfCameras, std::make_tuple(desiredWidth, desiredHeight, desiredRate, RS2_FORMAT_Z16));
+		colorProfiles.resize(numberOfCameras, std::make_tuple(desiredColorWidth, desiredColorHeight, desiredColorRate, RS2_FORMAT_RGB8));
+
 		depthFrameSize.resize(numberOfCameras);
 		colorFrameSize.resize(numberOfCameras);
 		infraFrameSize.resize(numberOfCameras);
 
 		for (int camera = 0; camera < numberOfCameras; camera++)
 		{
-			cameraInterface.startDevice(camera, depthProfiles[camera], colorProfiles[camera]);
+			cameraInterface.startDevice(camera, depthProfiles[camera], infraProfiles[camera], colorProfiles[camera]);
 			cameraInterface.setDepthTable(camera, 50000, 0, 100, 0, 0);
 			cameraInterface.setEmitterOptions(camera, false, 100.0f);
 
@@ -142,8 +143,8 @@ void resetFlowSize()
 
 	gflow.firstFrame = true;
 	//gflow.clearTexturesAndBuffers();
-	gflow.setNumLevels(colorFrameSize[0].x);
-	gflow.setTextureParameters(colorFrameSize[0].x, colorFrameSize[0].y);
+	gflow.setNumLevels(infraFrameSize[0].x);
+	gflow.setTextureParameters(infraFrameSize[0].x, infraFrameSize[0].y);
 	gflow.allocateTextures(1);
 	gflow.allocateBuffers();
 	gflow.allocateOffscreenRendering();
@@ -178,13 +179,8 @@ int main(int, char**)
 	ImGui_ImplGlfwGL3_Init(window, true);
 	ImVec4 clear_color = ImColor(114, 144, 154);
 
-	resoPresetPair.push_back(std::make_pair(640, 480));
-	resoPresetPair.push_back(std::make_pair(960, 540));
-	resoPresetPair.push_back(std::make_pair(1280, 720));
-	resoPresetPair.push_back(std::make_pair(1920, 1080));
 
-	colorWidth = resoPresetPair[resoPreset].first;
-	colorHeight = resoPresetPair[resoPreset].second;
+
 
 	//gflow.setupEKF();
 	// op flow init
@@ -227,8 +223,11 @@ int main(int, char**)
 	// Main loop
 	while (!glfwWindowShouldClose(window))
 	{
+
+		gflow.setCameraDevice(cameraDevice);
+
 		glfwGetFramebufferSize(window, &display_w, &display_h);
-		
+
 		//// Rendering
 		glViewport(0, 0, display_w, display_h);
 		glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
@@ -243,12 +242,13 @@ int main(int, char**)
 			gflow.setInfraTexture(cameraInterface.getInfraQueues(), infra);
 			gflow.setColorTexture(cameraInterface.getColorQueues(), col);
 
-			//cv::imshow("cols", col);
-			//cv::waitKey(1);
+
 
 			if (!infra.empty())
 			{
-				opwrapper.setImage(infra);
+				//cv::imshow("cols", infra);
+				//cv::waitKey(1);
+				opwrapper.setImage(infra, gflow.getCurrentLevel());
 			}
 
 			gflow.calc(true);
@@ -271,19 +271,31 @@ int main(int, char**)
 				grender.setDistanceTexture(gflood.getFloodOutputTexture());
 			}
 
+			frameNumber++; // MAY BE OUT BY 1
+			gflow.setCurrentLevel(frameNumber);
+			if (opwrapper.isNewData())
+			{
+				opwrapper.setDataRead();
+				int opFrameNumber = opwrapper.getOPFrameNumber();
+				gflow.setOpLevel(opFrameNumber);
+			}
 		}
-			
+
 		//std::cout << opwrapper.getPoses() << std::endl;
 		cv::Mat poses;
+		cv::Mat faces;
 		std::vector<int> poseIds;
-		opwrapper.getPoses(poses, poseIds);
+		opwrapper.getPoses(poses, faces, poseIds);
 
 		if (!poses.empty())
 		{
 			cv::Size poseSize = poses.size();
+			cv::Size faceSize = faces.size();
 
 			std::vector<std::valarray<float>> bpp(poseSize.height, std::valarray<float>(poseSize.width * 3));
 			std::vector<std::valarray<float>> RA(poseSize.height, std::valarray<float>(poseSize.width * 3));
+			std::vector<std::valarray<float>> faceVec(faceSize.height, std::valarray<float>(faceSize.width * 3));
+
 			std::vector<glm::vec2> neckPos(poseSize.height);
 
 			for (int person = 0; person < poseSize.height; person++)
@@ -338,155 +350,190 @@ int main(int, char**)
 
 					neckPos[person] = glm::vec2(RA[person][1 * 3], RA[person][1 * 3 + 1] + 50.0f);
 
-					
+
 				}
 				else // add person to map
 				{
 					std::deque<std::valarray<float>> tempbpp(windowWidth, bpp[person]);
-					rollingAverage.insert(std::pair<int, std::deque<std::valarray<float>>> (poseIds[person], tempbpp));
+					rollingAverage.insert(std::pair<int, std::deque<std::valarray<float>>>(poseIds[person], tempbpp));
 				}
 				//rollingAverage[poseIDs[person]].push_front(bpp[person]);
 
 				// [person][frame][part]
 
+				//faces
+				for (int facePart = 0; facePart < faceSize.width; facePart++)
+				{
+					if (faces.at<cv::Vec3f>(person, facePart)[2] > 0)
+					{
+						faceVec[person][facePart * 3] = faces.at<cv::Vec3f>(person, facePart)[0];
+						faceVec[person][facePart * 3 + 1] = faces.at<cv::Vec3f>(person, facePart)[1];
+						faceVec[person][facePart * 3 + 2] = faces.at<cv::Vec3f>(person, facePart)[2];
+					}
+					
+
+					//std::cout << "x : " << x << " y : " << y << std::endl;
+
+				}
+
+
 			}
 
 			grender.setBodyPosePoints(RA);
 			respiration.setTarget(neckPos);
+			//gflow.smoothPoints(faceVec);
+			gflow.smoothPoints(RA);
 
 		}
 
 		respiration.calc();
 
-		float neckDepth = respiration.getFromDepth();
+		//float neckDepth = respiration.getFromDepth();
 		float neckFlow = respiration.getFromFlow();
 
-		//if (neckDepth != 0.0f)
-		//{
-		//	respiration.smoothSignal(neckDepth, "depth");
-		//}
+		////if (neckDepth != 0.0f)
+		////{
+		////	respiration.smoothSignal(neckDepth, "depth");
+		////}
 
 		if (neckFlow != 0.0f)
 		{
 			respiration.smoothSignal(neckFlow, "flow");
 		}
 
-			glfwPollEvents();
-			ImGui_ImplGlfwGL3_NewFrame();
+		glfwPollEvents();
+		ImGui_ImplGlfwGL3_NewFrame();
 
-			grender.setRenderingOptions(showDepthFlag, showBigDepthFlag, showInfraFlag, showColorFlag, showLightFlag, showPointFlag, showFlowFlag, showEdgesFlag, showNormalFlag, showVolumeFlag, showTrackFlag, showDistanceFlag, showQuadsFlag);
+		grender.setRenderingOptions(showDepthFlag, showBigDepthFlag, showInfraFlag, showColorFlag, showLightFlag, showPointFlag, showFlowFlag, showEdgesFlag, showNormalFlag, showVolumeFlag, showTrackFlag, showDistanceFlag, showQuadsFlag);
 
-				grender.setColorImageRenderPosition(vertFov);
+		grender.setColorImageRenderPosition(vertFov);
 
-				grender.setFlowImageRenderPosition(colorFrameSize[0].x, colorFrameSize[0].y, vertFov);
+		grender.setFlowImageRenderPosition(colorFrameSize[0].x, colorFrameSize[0].y, vertFov);
 
-				grender.setViewMatrix(xRot, yRot, zRot, xTran, yTran, zTran);
-				grender.setProjectionMatrix();
+		grender.setViewMatrix(xRot, yRot, zRot, xTran, yTran, zTran);
+		grender.setProjectionMatrix();
 
-				glClear(GL_DEPTH_BUFFER_BIT);
-				glEnable(GL_DEPTH_TEST);
+		glClear(GL_DEPTH_BUFFER_BIT);
+		glEnable(GL_DEPTH_TEST);
 
-			grender.Render(true);
+		grender.Render(true);
 
-			if (grender.showImgui())
+		if (grender.showImgui())
+		{
+			//ImGui::SetNextWindowPos(ImVec2(1600 - 32 - 528 - 150, 32));
+			//ImGui::SetNextWindowSize(ImVec2(528 + 150, 424), ImGuiSetCond_Always);
+			ImGuiWindowFlags window_flags = 0;
+
+			float arr[] = { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+			arr[0] = gflow.getTimeElapsed();
+			arr[8] = arr[0];// +arr[1] + arr[2] + arr[3] + arr[4] + arr[5] + arr[6] + arr[7];
+			GLint total_mem_kb = 0;
+			glGetIntegerv(GL_GPU_MEM_INFO_TOTAL_AVAILABLE_MEM_NVX,
+				&total_mem_kb);
+
+			GLint cur_avail_mem_kb = 0;
+			glGetIntegerv(GL_GPU_MEM_INFO_CURRENT_AVAILABLE_MEM_NVX,
+				&cur_avail_mem_kb);
+
+			bool showGUI = grender.showImgui();
+			ImGui::Begin("Menu", &showGUI, window_flags);
+			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", arr[8], 1000.0f / arr[8]);
+			ImGui::Text("GPU Memory Usage %d MB out of %d (%.1f %%)", (total_mem_kb - cur_avail_mem_kb) / 1024, total_mem_kb / 1024, 100.0f * (1.0f - (float)cur_avail_mem_kb / (float)total_mem_kb));
+
+
+
+
+			//ImGui::PushItemWidth(-krender.guiPadding().first);
+			//ImGui::SetWindowPos(ImVec2(display_w - (display_w / 4) - krender.guiPadding().first, ((krender.guiPadding().second) + (0))));
+			ImGui::Text("Help menu - press 'H' to hide");
+			ImGui::Separator();
+
+			ImGui::Separator();
+			ImGui::Text("View Options");
+			ImGui::SameLine();
+			if (ImGui::Button("Camera 0"))
 			{
-				//ImGui::SetNextWindowPos(ImVec2(1600 - 32 - 528 - 150, 32));
-				//ImGui::SetNextWindowSize(ImVec2(528 + 150, 424), ImGuiSetCond_Always);
-				ImGuiWindowFlags window_flags = 0;
-
-				float arr[] = { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-				arr[0] = gflow.getTimeElapsed();
-				arr[8] = arr[0];// +arr[1] + arr[2] + arr[3] + arr[4] + arr[5] + arr[6] + arr[7];
-				GLint total_mem_kb = 0;
-				glGetIntegerv(GL_GPU_MEM_INFO_TOTAL_AVAILABLE_MEM_NVX,
-					&total_mem_kb);
-
-				GLint cur_avail_mem_kb = 0;
-				glGetIntegerv(GL_GPU_MEM_INFO_CURRENT_AVAILABLE_MEM_NVX,
-					&cur_avail_mem_kb);
-
-				bool showGUI = grender.showImgui();
-				ImGui::Begin("Menu", &showGUI, window_flags);
-				ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", arr[8], 1000.0f / arr[8]);
-				ImGui::Text("GPU Memory Usage %d MB out of %d (%.1f %%)", (total_mem_kb - cur_avail_mem_kb) / 1024, total_mem_kb / 1024, 100.0f * (1.0f - (float)cur_avail_mem_kb / (float)total_mem_kb));
-
-
-
-
-				//ImGui::PushItemWidth(-krender.guiPadding().first);
-				//ImGui::SetWindowPos(ImVec2(display_w - (display_w / 4) - krender.guiPadding().first, ((krender.guiPadding().second) + (0))));
-				ImGui::Text("Help menu - press 'H' to hide");
-				ImGui::Separator();
-				
-				ImGui::Separator();
-				ImGui::Text("View Options");
-
-				if (ImGui::Button("Show Color")) showColorFlag ^= 1; ImGui::SameLine(); ImGui::Checkbox("", &showColorFlag); ImGui::SameLine(); if (ImGui::Button("Show Depth")) showDepthFlag ^= 1; ImGui::SameLine(); ImGui::Checkbox("", &showDepthFlag);
-
-				
-				if (ImGui::Button("Show Flow")) showFlowFlag ^= 1; ImGui::SameLine(); ImGui::Checkbox("", &showFlowFlag); ImGui::SameLine(); if (ImGui::Button("Show Edges")) showEdgesFlag ^= 1; ImGui::SameLine(); ImGui::Checkbox("", &showEdgesFlag);
-				
-				if (ImGui::Button("Show Point")) showPointFlag ^= 1; ImGui::SameLine(); ImGui::Checkbox("", &showPointFlag);
-
-				//if (ImGui::Button("Show flood")) showFloodFlag ^= 1; ImGui::SameLine(); ImGui::Checkbox("", &showFloodFlag);
-				if (ImGui::Button("Show flood")) showDistanceFlag ^= 1; ImGui::SameLine(); ImGui::Checkbox("", &showDistanceFlag); ImGui::SameLine(); if (ImGui::Button("Show Quads")) showQuadsFlag ^= 1; ImGui::SameLine(); ImGui::Checkbox("", &showQuadsFlag);
-
-				ImGui::Separator();
-				ImGui::Text("Other Options");
-
-				if (ImGui::Button("Reset flow points")) gflow.clearPoints();
-				//if (ImGui::Button("Reset")) OCVStuff.resetColorPoints();
-
-				//if (ImGui::Button("Reset Depth")) krender.resetRegistrationMatrix();
-
-				//if (ImGui::Button("Export PLY")) krender.setExportPly(true);
-				//if (ImGui::Button("Export PLY")) krender.exportPointCloud();
-				//if (ImGui::Button("Save Color")) OCVStuff.saveImage(0); // saving color image (flag == 0)
-
-
-				ImGui::Separator();
-				ImGui::Text("View Transforms");
-				ImGui::SliderFloat("vFOV", &vertFov, 1.0f, 90.0f);
-				ImGui::SliderInt("tex level", &texLevel, 0, 9);
-				ImGui::SliderFloat("valA", &valA, 0.1f, 50.0f);
-				ImGui::SliderFloat("valB", &valB, 0.00001f, 0.5f);
-				ImGui::SliderInt("cutoff", &cutoff, 0, 7);
-
-				grender.setFov(vertFov);
-				gflow.setVals(valA, valB);
-				gflow.setCutoff(cutoff);
-				gflood.setEdgeThreshold(valA);
-				grender.setRenderLevel(texLevel);
-
-				if (ImGui::Button("Reset Sliders")) resetSliders();
-
-
-
-
-				ImGui::End();
-
+				gflow.wipeFlow();
+				cameraDevice = 0;
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Camera 1"))
+			{
+				gflow.wipeFlow();
+				cameraDevice = 1;
 			}
 
+			if (ImGui::Button("Show Color")) showColorFlag ^= 1; ImGui::SameLine(); ImGui::Checkbox("", &showColorFlag); ImGui::SameLine(); if (ImGui::Button("Show Depth")) showDepthFlag ^= 1; ImGui::SameLine(); ImGui::Checkbox("", &showDepthFlag);
+
+
+			if (ImGui::Button("Show Flow")) showFlowFlag ^= 1; ImGui::SameLine(); ImGui::Checkbox("", &showFlowFlag); ImGui::SameLine(); if (ImGui::Button("Show Edges")) showEdgesFlag ^= 1; ImGui::SameLine(); ImGui::Checkbox("", &showEdgesFlag);
+
+			if (ImGui::Button("Show Point")) showPointFlag ^= 1; ImGui::SameLine(); ImGui::Checkbox("", &showPointFlag);
+
+			//if (ImGui::Button("Show flood")) showFloodFlag ^= 1; ImGui::SameLine(); ImGui::Checkbox("", &showFloodFlag);
+			if (ImGui::Button("Show flood")) showDistanceFlag ^= 1; ImGui::SameLine(); ImGui::Checkbox("", &showDistanceFlag); ImGui::SameLine(); if (ImGui::Button("Show Quads")) showQuadsFlag ^= 1; ImGui::SameLine(); ImGui::Checkbox("", &showQuadsFlag);
+
+			ImGui::Separator();
+			ImGui::Text("Other Options");
+
+			if (ImGui::Button("Reset flow points")) gflow.clearPoints();
+			//if (ImGui::Button("Reset")) OCVStuff.resetColorPoints();
+
+			//if (ImGui::Button("Reset Depth")) krender.resetRegistrationMatrix();
+
+			//if (ImGui::Button("Export PLY")) krender.setExportPly(true);
+			//if (ImGui::Button("Export PLY")) krender.exportPointCloud();
+			//if (ImGui::Button("Save Color")) OCVStuff.saveImage(0); // saving color image (flag == 0)
+
+
+			ImGui::Separator();
+			ImGui::Text("View Transforms");
+			ImGui::SliderFloat("vFOV", &vertFov, 1.0f, 90.0f);
+			ImGui::SliderInt("tex level", &texLevel, 0, 9);
+			ImGui::SliderFloat("valA", &valA, 0.1f, 50.0f);
+			ImGui::SliderFloat("valB", &valB, 0.00001f, 0.5f);
+			ImGui::SliderInt("cutoff", &cutoff, 0, 7);
+
+			grender.setFov(vertFov);
+			gflow.setVals(valA, valB);
+			gflow.setCutoff(cutoff);
+			gflood.setEdgeThreshold(valA);
+			grender.setRenderLevel(texLevel);
+
+			if (ImGui::Button("Reset Sliders")) resetSliders();
 
 
 
-			ImGui::Render();
-			ImGui_ImplGlfwGL3_RenderDrawData(ImGui::GetDrawData());
 
-			if (changedSource)
-			{
-				// if use video
-				// do soemthign 
-				// if use webcam
-				// do somethign else
-				resetFlowSize();
-			}
+			ImGui::End();
 
-
-			//grender.setComputeWindowPosition();
-			//gfusion.render();
-			glfwSwapBuffers(window);
 		}
+
+
+
+
+		ImGui::Render();
+		ImGui_ImplGlfwGL3_RenderDrawData(ImGui::GetDrawData());
+
+		if (changedSource)
+		{
+			// if use video
+			// do soemthign 
+			// if use webcam
+			// do somethign else
+			resetFlowSize();
+		}
+
+
+		//grender.setComputeWindowPosition();
+		//gfusion.render();
+		glfwSwapBuffers(window);
+
+		{
+			//using namespace std::chrono_literals;
+			//std::this_thread::sleep_for(0.012s);
+		}
+	}
 
 	
 

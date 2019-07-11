@@ -64,7 +64,7 @@ void gFlow::setLocations()
 	m_makePatchesVerID = glGetSubroutineIndex(disFlowProg.getHandle(), GL_COMPUTE_SHADER, "makePatchesVer");
 	m_trackID = glGetSubroutineIndex(disFlowProg.getHandle(), GL_COMPUTE_SHADER, "track");
 	m_trackPoseID = glGetSubroutineIndex(disFlowProg.getHandle(), GL_COMPUTE_SHADER, "trackPose");
-
+	m_getLivePointsID = glGetSubroutineIndex(disFlowProg.getHandle(), GL_COMPUTE_SHADER, "getLivePoints");
 
 	m_patchInverseSearchID = glGetSubroutineIndex(disFlowProg.getHandle(), GL_COMPUTE_SHADER, "patchInverseSearch");
 	m_patchInverseSearchDescentID = glGetSubroutineIndex(disFlowProg.getHandle(), GL_COMPUTE_SHADER, "patchInverseSearchDescent");
@@ -90,6 +90,8 @@ void gFlow::setLocations()
 	m_valAID = glGetUniformLocation(disFlowProg.getHandle(), "valA");
 	m_valBID = glGetUniformLocation(disFlowProg.getHandle(), "valB");
 
+	m_opLevelID = glGetUniformLocation(disFlowProg.getHandle(), "opLevel");
+	m_currentLevelID = glGetUniformLocation(disFlowProg.getHandle(), "currentLevel");
 
 	// variref
 	m_subroutine_variRefineID = glGetSubroutineUniformLocation(variRefineProg.getHandle(), GL_COMPUTE_SHADER, "launchSubroutine"); // this is wrong
@@ -201,7 +203,7 @@ void gFlow::setDepthTexture(std::vector<rs2::frame_queue> depthQ)
 {
 	rs2::frame depthFrame;
 
-	if (depthQ[0].poll_for_frame(&depthFrame)) //FIRST CAMERA ONLY
+	if (depthQ[m_cameraDevice].poll_for_frame(&depthFrame)) //FIRST CAMERA ONLY
 	{
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, m_textureDepth);
@@ -214,7 +216,7 @@ void gFlow::setColorTexture(std::vector<rs2::frame_queue> colorQ, cv::Mat &color
 {
 	rs2::frame colorFrame;
 
-	if (colorQ[0].poll_for_frame(&colorFrame)) //FIRST CAMERA ONLY
+	if (colorQ[m_cameraDevice].poll_for_frame(&colorFrame)) //FIRST CAMERA ONLY
 	{
 
 		/*glActiveTexture(GL_TEXTURE1);
@@ -254,7 +256,7 @@ void gFlow::setInfraTexture(std::vector<rs2::frame_queue> infraQ, cv::Mat &infra
 {
 	rs2::frame infraFrame;
 
-	if (infraQ[0].poll_for_frame(&infraFrame)) //FIRST CAMERA ONLY
+	if (infraQ[m_cameraDevice].poll_for_frame(&infraFrame)) //FIRST CAMERA ONLY
 	{
 
 		//glActiveTexture(GL_TEXTURE1);
@@ -267,10 +269,10 @@ void gFlow::setInfraTexture(std::vector<rs2::frame_queue> infraQ, cv::Mat &infra
 		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_texture_width, m_texture_height, GL_RED, GL_UNSIGNED_BYTE, infraFrame.get_data());
 		glGenerateMipmap(GL_TEXTURE_2D);
 
-
 		if (infraFrame != NULL)
 		{
 			infraMat = cv::Mat(m_texture_height, m_texture_width, CV_8UC1, (void*)infraFrame.get_data());
+			infraMat.copyTo(tempMat);
 			//cv::imshow("col", colorMat);
 			//cv::waitKey(1);
 		}
@@ -300,7 +302,7 @@ void gFlow::setTexture(std::vector<rs2::frame_queue> colorQ, cv::Mat &colorMat)
 {
 	rs2::frame colorFrame;
 
-	if (colorQ[0].poll_for_frame(&colorFrame)) //FIRST CAMERA ONLY
+	if (colorQ[m_cameraDevice].poll_for_frame(&colorFrame)) //FIRST CAMERA ONLY
 	{
 
 		//glActiveTexture(GL_TEXTURE1);
@@ -632,7 +634,15 @@ void gFlow::allocateBuffers()
 
 
 	
+	// smooth points
+	glGenBuffers(1, &m_bufferLivePoints);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_bufferLivePoints);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, 70 * sizeof(glm::vec4), NULL, GL_DYNAMIC_DRAW); // 10 people max
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, m_bufferLivePoints);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
+	m_oldPoints.resize(70, glm::vec4(0.0f));
+	m_currentPoints.resize(70, glm::vec4(0.0f));
 
 
 }  
@@ -710,7 +720,11 @@ void gFlow::allocateTextures(int nChn)
 	       
 	m_textureWarp_I1 = GLHelper::createTexture(m_textureWarp_I1, GL_TEXTURE_2D, m_numLevels, m_texture_width, m_texture_height, 0, GL_RGBA8, GL_LINEAR, GL_LINEAR_MIPMAP_NEAREST);
 	  
-	      
+	m_textureFlowArray = GLHelper::createTexture(m_textureFlowArray, GL_TEXTURE_2D_ARRAY, 1, m_texture_width, m_texture_height, m_flowHistoryLevels, GL_RG16F, GL_LINEAR, GL_LINEAR_MIPMAP_NEAREST);
+
+
+
+
 	// variational refine  
 
 	//m_textureI_warp = createTexture(GL_TEXTURE_2D, numLevels, m_texture_width, m_texture_height, 0, GL_RGBA8);
@@ -1237,23 +1251,21 @@ void gFlow::medianFilter(int level)
 	glBindImageTexture(2, m_textureU_x_y, level, GL_FALSE, 0, GL_READ_ONLY, GL_RG32F);
 	glBindImageTexture(1, m_texture_total_flow, level, GL_FALSE, 0, GL_WRITE_ONLY, GL_RG32F);
 
+	if (level == 0)
+	{
+		glUniform1i(m_currentLevelID, m_currentLevel);
+		glBindImageTexture(7, m_textureFlowArray, 0, GL_TRUE, 0, GL_WRITE_ONLY, GL_RG16F);
+	}
+
 	int compWidth = divup(m_texture_width >> level, 4);
 	int compHeight = divup(m_texture_height >> level, 4);
-
 	glDispatchCompute(compWidth, compHeight, 1);
 
-	glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
-
-
 	glMemoryBarrier(GL_ALL_BARRIER_BITS);
-
-
 
 	glCopyImageSubData(m_texture_total_flow, GL_TEXTURE_2D, level, 0, 0, 0,
 		m_textureU_x_y, GL_TEXTURE_2D, level, 0, 0, 0,
 		m_texture_width >> level, m_texture_height >> level, 1);
-	//}
-
 
 	glMemoryBarrier(GL_ALL_BARRIER_BITS);
 
@@ -1530,9 +1542,6 @@ void gFlow::calcStandardDeviation(int level)
 
 
 }
-
-
-
 
 void gFlow::variationalRefinement(int level)
 {
@@ -2013,72 +2022,23 @@ bool gFlow::calc(bool useInfrared)
 
 	for (int level = m_numLevels - 1; level > -1; level--)
 	{
-
-		//glBindTexture(GL_TEXTURE_2D, m_textureS_x_y);
-		//glTexSubImage2D(GL_TEXTURE_2D, level, 0, 0, (m_texture_width / m_patch_stride) >> level,( m_texture_height / m_patch_stride) >> level, GL_RG, GL_FLOAT, zeroValues.data());
-
 		makePatches(level);
-
-
-
-
 		patchInverseSearch(level, useInfrared);
-
-
-
-
 		densification(level);
-
 		medianFilter(level);
 
 		//if (level == 0)
 		//{
 		//	calcStandardDeviation(level);
 		//}
-
-
 		//if (level > 1)
 		//{
 		//	variRef(level);  // mine, broken ish  slower   
-
 		//}
-
-
-
 		//if (level > -1) // dont need to densify finest level?   
 		//{
 		//	variationalRefinement(level); // opencv, slow
 		//}
-		//	//variRef(level);  // mine, broken ish  slower   
-
-
-		//	//variRef(level);  // mine, broken ish  slower   
-
-		//	//
-		//if (level == 0)
-		//{
-		//	cv::Mat ssdMat = cv::Mat((m_texture_height >> level) / m_patch_stride, (m_texture_width >> level) / m_patch_stride, CV_32FC1);
-
-
-		//	glActiveTexture(GL_TEXTURE0);
-		//	glBindTexture(GL_TEXTURE_2D, m_textureTest);
-		//	glGetTexImage(GL_TEXTURE_2D, level, GL_RED, GL_FLOAT, ssdMat.data);
-		//	glBindTexture(GL_TEXTURE_2D, 0);
-		//	glActiveTexture(0);
-
-		//	cv::namedWindow("ssd", WINDOW_NORMAL);
-		//	cv::imshow("ssd", ssdMat);
-		//	cv::waitKey(1);
-		//}
-
-
-
-
-		//}
-		  
-
-		 
-		                                     
 	}        
 	glMemoryBarrier(GL_ALL_BARRIER_BITS); 
 
@@ -2480,5 +2440,108 @@ void gFlow::buildQuadtree()
 	//cv::namedWindow("quadtree", WINDOW_NORMAL);
 	//cv::imshow("quadtree", qtreeImage);
 	//cv::waitKey(1);
+
+}
+
+
+void gFlow::smoothPoints(std::vector<std::valarray<float>> pointsVec)
+{
+	int numberOfPoints = pointsVec[0].size() / 3;
+	disFlowProg.use();
+	glUniformSubroutinesuiv(GL_COMPUTE_SHADER, 1, &m_getLivePointsID);
+
+	glUniform1i(m_currentLevelID, m_currentLevel);
+	glUniform1i(m_opLevelID, m_opLevel);
+
+	std::cout << "op : " << m_opLevel << " target :  " << m_currentLevel << std::endl;
+	glBindImageTexture(7, m_textureFlowArray, 0, GL_TRUE, 0, GL_READ_ONLY, GL_RG16F);
+
+	//std::cout << glm::to_string(m_currentPoints[0]);
+
+	for (int i = 0; i < numberOfPoints; i++)
+	{
+	    if (m_currentPoints[i].z != 0.0f && m_newPointsData)
+		{
+			//std::cout << "averaging points " << std::endl;
+			m_oldPoints[i] = glm::vec4((pointsVec[0][i * 3] + m_currentPoints[i].z) / 2.0f, (pointsVec[0][i * 3 + 1] + m_currentPoints[i].w) / 2.0f, 0.0f, 0.0f);	
+			//m_oldPoints[i].x = m_currentPoints[i].z;
+			//m_oldPoints[i].y = m_currentPoints[i].w;
+
+
+				//cv::circle(outImage, cv::Point2f(currentPoints[i].x, currentPoints[i].y), 10, cv::Scalar(255, 0, 0, 255), -1);
+
+			
+
+		}
+	    else
+		{
+			//std::cout << "here" << std::endl;
+			m_oldPoints[i] = glm::vec4(pointsVec[0][i * 3], pointsVec[0][i * 3 + 1], 0.0f, 0.0f);
+			//cv::circle(tempMat, cv::Point2f(m_oldPoints[i].x, m_oldPoints[i].y), 3, cv::Scalar(255, 255, 255, 255), -1);
+
+		
+		}
+	}
+
+
+	if (m_newPointsData)
+	{
+		m_newPointsData = false;
+	}
+
+	bool newPointsReceived = false;
+	bool firstPoints = true;
+
+	if (firstPoints)
+	{
+		firstPoints = false;
+		// get oldPoints from OP wrapper
+		
+		// currentPosition is unknown since we have no valid points
+	}
+
+
+
+
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_bufferLivePoints);
+	glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, numberOfPoints * sizeof(glm::vec4), glm::value_ptr(m_oldPoints.front()));
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, m_bufferLivePoints);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+
+
+	int compWidth = divup(numberOfPoints, 4);
+	glDispatchCompute(compWidth, 1, 1);
+
+
+
+
+	GLfloat *ptr;
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_bufferLivePoints);
+	ptr = (GLfloat *)glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY);
+	memcpy(m_currentPoints.data(), ptr, numberOfPoints * sizeof(glm::vec4));
+	glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+	glMemoryBarrier(GL_ALL_BARRIER_BITS);
+
+
+
+
+	//cv::Mat outImage(720, 1280, CV_8UC4);
+	for (int i = 0; i < numberOfPoints; i++)
+	{
+		//cv::circle(outImage, cv::Point2f(currentPoints[i].x, currentPoints[i].y), 10, cv::Scalar(255, 0, 0, 255), -1);
+
+		cv::circle(tempMat, cv::Point2f(m_currentPoints[i].z, m_currentPoints[i].w), 3, cv::Scalar(128,255, 0, 255), -1);
+	}
+
+	//cv::imshow("outim", tempMat);
+	//cv::waitKey(1);
+
+
+
+
+
 
 }

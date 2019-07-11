@@ -10,9 +10,10 @@
 #include "glhelper.h"
 
 #include <glm/gtc/type_ptr.hpp>
-
+#include <glm/gtx/string_cast.hpp>
 #include <iostream>
 #include <fstream>
+#include <valarray>
 
 #include "opencv2/core/utility.hpp"
 #include "opencv2/opencv.hpp"
@@ -49,6 +50,10 @@ public:
 	{
 		m_cutoff = (uint32_t)cOff;
 	}
+	void setCameraDevice(int dev)
+	{
+		m_cameraDevice = dev;
+	}
 	void setTexture(unsigned char * imageArray, int nChn);
 	void setTexture(std::vector<rs2::frame_queue> colorQ, cv::Mat &colorMat);
 	void setTexture(float * imageArray);
@@ -71,6 +76,8 @@ public:
 	void wipeFlow();
 	void wipeSumFlow();
 	void clearPoints();
+
+	void smoothPoints(std::vector<std::valarray<float>> RA);
 
 	//void resizeFlow(int level);
 	bool patchInverseSearch(int level, bool useInfrared);
@@ -141,6 +148,20 @@ public:
 
 	bool firstFrame = true;
 
+	void setCurrentLevel(int frameNumber)
+	{
+		m_currentLevel = frameNumber % m_flowHistoryLevels;
+	}
+	int getCurrentLevel()
+	{
+		return m_currentLevel;
+	}
+	void setOpLevel(int frameNumber)
+	{
+		m_opLevel = frameNumber;
+		m_newPointsData = true;
+	}
+
 private:
 
 
@@ -150,7 +171,6 @@ private:
 	std::vector<float> m_trackedPoints;
 
 	GLuint m_trackedPointsBuffer;
-
 
 	int variational_refinement_iter;
 	float variational_refinement_alpha;
@@ -193,10 +213,8 @@ private:
 
 	GLuint m_subroutine_DISflowID;
 	GLuint m_makePatchesID;
-
 	GLuint m_makePatchesHorID;
 	GLuint m_makePatchesVerID;
-
 
 	GLuint m_patchInverseSearchID;
 	GLuint m_patchInverseSearchDescentID;
@@ -209,6 +227,7 @@ private:
 	GLuint m_patch_sizeID;
 	GLuint m_patch_strideID;
 	GLuint m_trackWidthID;
+	GLuint m_getLivePointsID;
 
 	GLuint m_sumFlowTextureID;
 
@@ -260,6 +279,9 @@ private:
 	GLuint m_valAID;
 	GLuint m_valBID;
 
+	GLuint m_currentLevelID;
+	GLuint m_opLevelID;
+
 	GLuint m_jfaInitID;
 	GLuint m_jfaUpdateID;
 	GLuint m_jumpID;
@@ -268,6 +290,7 @@ private:
 	//Buffers
 	std::vector<float> m_refinementDataTerms;
 	GLuint m_buffer_refinement_data_terms;
+	GLuint m_bufferLivePoints;
 
 	//GLuint m_bufferU; //!< a buffer for the merged flow
 
@@ -322,6 +345,8 @@ private:
 
 	GLuint m_texture_prefixSumSecondPass;
 	GLuint m_texture_prefixSumTempSecondPass;
+
+	GLuint m_textureFlowArray;
 
 	//GLuint m_textureUy;
 
@@ -378,5 +403,16 @@ private:
 	std::vector<int> zeroValuesInt = std::vector<int>(1920 * 1080 * 4, 0);
 
 
+	int m_flowHistoryLevels = 90;
+	int m_currentLevel;
+	int m_opLevel;
+
+	cv::Mat tempMat;
+
+	std::vector<glm::vec4> m_oldPoints;
+	std::vector<glm::vec4> m_currentPoints;
+
+	bool m_newPointsData = false;
+	int m_cameraDevice;
 
 };

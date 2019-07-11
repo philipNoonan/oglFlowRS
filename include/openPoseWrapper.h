@@ -27,12 +27,25 @@ public:
 	~OPWrapper() {};
 
 	void start();
-	void setImage(cv::Mat image);
+	void setImage(cv::Mat image, int frameNumber);
 	void stop();
 
-	void getPoses(cv::Mat &poses, std::vector<int> &poseIds)
+	bool isNewData()
+	{
+		return m_newData;
+	}
+	void setDataRead()
+	{
+		m_newData = false;
+	}
+	int getOPFrameNumber()
+	{
+		return m_opFrameNumber;
+	}
+	void getPoses(cv::Mat &poses, cv::Mat &faces, std::vector<int> &poseIds)
 	{
 		poses = m_detectedKeyPointsPose;
+		faces = m_detectedKeyPointsFace;
 		poseIds = m_detectedPoseIds;
 	}
 
@@ -45,7 +58,12 @@ private:
 	std::mutex m_mtx;
 	cv::Mat m_inputImage;
 	cv::Mat m_detectedKeyPointsPose;
+	cv::Mat m_detectedKeyPointsFace;
 	std::vector<int> m_detectedPoseIds;
+
+	int m_opFrameNumber;
+	int m_temp_opFrameNumber;
+	bool m_newData = false;
 };
 
 

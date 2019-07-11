@@ -219,7 +219,7 @@ vec4 fromFlow()
 
 
 	//return vec4(tFlow.x < 0 ? 1 : 0, tFlow.y < 0 ? 1 : 0, 0, 1);
-	return vec4((1.0 - rgb)*1.0, mag > 0.05 ? (mag < 0.50 ? mag / 0.50 : 1.0) : 0.0);
+	return vec4((1.0 - rgb)*1.0, mag > 0.05 ? (mag < 0.50 ? mag / 0.50 : 1.0) : 0.0 * 0.5);
 	//	return vec4((1.0 - rgb)*10.0, 1.0);
 
 }

@@ -12,8 +12,10 @@ void OPWrapper::start()
 	}
 }
 
-void OPWrapper::setImage(cv::Mat image)
+void OPWrapper::setImage(cv::Mat image, int frameNumber)
 {
+	m_temp_opFrameNumber = frameNumber;
+	//std::cout << "temp number : " << m_temp_opFrameNumber << std::endl;
 	//image.copyTo(m_inputImage);
 	if (image.channels() == 1)
 	{
@@ -39,7 +41,7 @@ void OPWrapper::stop()
 void OPWrapper::capturingLoop()
 {
 	op::Point<int> outputSize(-1, -1);
-	op::Point<int> netInputSize(240, 240);
+	op::Point<int> netInputSize(368, 368);
 	op::Point<int> faceNetInputSize(368, 368);
 
 	op::Wrapper opWrapper{ op::ThreadManagerMode::Synchronous };
@@ -80,7 +82,9 @@ void OPWrapper::capturingLoop()
 
 	while (m_status == CAPTURING)
 	{
-		
+		int currFN = m_temp_opFrameNumber;
+		//std::cout << "starting processing " << currFN << std::endl;
+
 		const op::Point<int> imageSize{ m_inputImage.cols, m_inputImage.rows };
 		std::vector<double> scaleInputToNetInputs;
 		std::vector<op::Point<int>> netInputSizes;
@@ -103,9 +107,20 @@ void OPWrapper::capturingLoop()
 		//faceExtractorCaffe.forwardPass(faceRectsOP, m_inputImage);
 
 		auto poses = poseExtractorCaffeStaf.getPoseKeypoints().clone();
+		{
+			//using namespace std::chrono_literals;
+			//std::this_thread::sleep_for(0.05s);
+
+		}
+		//const auto faceKeypoints = faceExtractorCaffe.getFaceKeypoints();
+		//auto faces = faceKeypoints.clone();
 
 		m_mtx.lock();
+		m_opFrameNumber = currFN;
+		//std::cout << "op number : " << m_opFrameNumber << std::endl;
+
 		m_detectedKeyPointsPose = poses.getConstCvMat().clone();
+		//m_detectedKeyPointsFace = faces.getConstCvMat().clone();
 		m_detectedPoseIds.resize(poseIds.getSize(0));
 		for (int person = 0; person < poses.getSize(0); person++)
 		{
@@ -113,14 +128,14 @@ void OPWrapper::capturingLoop()
 			{
 				m_detectedPoseIds[person] = poseIds.at(person);
 			}
+			m_newData = true;
 		}
 		m_mtx.unlock();
 
 		//poseRenderer.renderPose(outputArray, poseKeypoints, scaleInputToOutput, -1.0f, poseIds);
 
 		// Step 5 - Render poseKeypoints
-		 //const auto faceKeypoints = faceExtractorCaffe.getFaceKeypoints();
-		 //faceRenderer.renderFace(outputArray, faceKeypoints, scaleInputToOutput);
+		//faceRenderer.renderFace(outputArray, faceKeypoints, scaleInputToOutput);
 		 
 		 // Step 6 - OpenPose output format to cv::Mat
 		//auto outputImage = opOutputToCvMat.formatToCvMat(outputArray);
@@ -130,11 +145,10 @@ void OPWrapper::capturingLoop()
 		//cv::imshow("points", outputImage);
 		//cv::waitKey(1);
 
-		{
-			//using namespace std::chrono_literals;
-			//std::this_thread::sleep_for(0.15s);
 
-		}
+		//std::cout << "finsihed processing " << m_temp_opFrameNumber << std::endl;
+
+
 	}
 
 }

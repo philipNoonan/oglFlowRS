@@ -628,9 +628,13 @@ void gRender::renderLiveVideoWindow(bool useInfrared)
 			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_poseEBO);
 			glUniformSubroutinesuiv(GL_VERTEX_SHADER, 1, &m_fromPosePoints2DID);
 			glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &m_fromPointsID);
+			glm::vec2 imageSize;
 
+			imageSize = glm::vec2(m_color_width, m_color_height);
 			for (int person = 0; person < m_bodyPosePoints.size(); person++)
 			{
+				glUniform2fv(m_imSizeID, 1, glm::value_ptr(imageSize));
+
 				glBindBuffer(GL_ARRAY_BUFFER, m_poseVBO);
 				glBufferSubData(GL_ARRAY_BUFFER, 0, m_bodyPosePoints[person].size() * sizeof(float), m_bodyPosePoints[person].data());
 				glDrawElements(GL_LINES, 44, GL_UNSIGNED_INT, 0);

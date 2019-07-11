@@ -3,36 +3,29 @@
 layout(local_size_x = 4, local_size_y = 4) in;
 
 
-
+// IMAGES
 layout(binding = 0, rg32f) uniform image2D im_grad_I0_x_y;
 layout(binding = 1, rg32f) uniform image2D flow_texture_x_y;
 layout(binding = 2, rg32f) uniform image2D previous_layer_flow_texture_x_y;
 layout(binding = 3, r32f) uniform image2D test_texture;
-
-  //  layout(binding = 7, rgba32f) uniform image2D im_prod_I0_xx_yy_xy_aux;
-
 layout(binding = 4, rgba32f) uniform image2D im_prod_I0_xx_yy_xy;
 layout(binding = 5, rg32f) uniform image2D im_sum_I0_x_y;
 layout(binding = 6, rg32f) uniform image2D im_S_x_y;
+layout(binding = 7, rg16f) uniform image2DArray flowArray;
 
-//layout(binding = 7, rg8ui) uniform uimage2D uim_I0_I1;
-
-
+// TEXTURES
 layout(binding = 0) uniform sampler2D tex_I0;
 layout(binding = 1) uniform sampler2D tex_I1;
-
-
 layout(binding = 2) uniform sampler2D tex_prod_I0_xx_yy_xy;
 layout(binding = 3) uniform sampler2D tex_sum_I0_x_y;
-
 layout(binding = 4) uniform sampler2D tex_flow_previous;
 layout(binding = 5) uniform sampler2D tex_flow_initial;
-
 layout(binding = 6) uniform sampler2D tex_flow_final;
 
-layout(std430, binding = 7) buffer trackedPointsBuf
+// BUFFERS
+layout(std430, binding = 0) buffer trackedPointsBuf
 {
-    float trackedPointsBuffer [];
+    vec4 trackedPointsBuffer [];
 };
 
 
@@ -51,6 +44,9 @@ uniform int trackWidth;
 uniform int imageType;
 
 uniform ivec2 texSize;// = ivec2(1920, 1080);
+
+uniform int currentLevel;
+uniform int opLevel;
 
 float luminance(vec3 color)
 {
@@ -291,15 +287,15 @@ float yCoord = (( (float(gl_GlobalInvocationID.y) * 4.0 + float(psz2))) / ( floa
 
 ////////////////// INITPOSE IS TEH WRONGSZROSSOSOS FIX ME PLS
 
- initFlowXY = imageLoad(previous_layer_flow_texture_x_y, ivec2(gl_GlobalInvocationID.x* 4 + psz2, gl_GlobalInvocationID.y* 4 + psz2)).xy; // get the flow from the centre of the patch
+   initFlowXY = imageLoad(previous_layer_flow_texture_x_y, ivec2(gl_GlobalInvocationID.x* 4 + psz2, gl_GlobalInvocationID.y* 4 + psz2)).xy; // get the flow from the centre of the patch
 //vec2 tf = textureLod(tex_flow_previous, vec2(xCoord, yCoord), level + 1).xy;
 
   // initFlowXY =  textureLod(tex_flow_initial, vec2(xCoord, yCoord), level).xy;
 
-    initFlowXY.x = initFlowXY.x< 8 ? initFlowXY.x : 0;
-    initFlowXY.y = initFlowXY.y< 8 ? initFlowXY.y : 0;
+    //initFlowXY.x = initFlowXY.x < patch_size << level ? initFlowXY.x : 0.0f;
+    //initFlowXY.y = initFlowXY.y < patch_size << level ? initFlowXY.y : 0.0f;
 
-    initFlowXY.x /= float(pow(2, level+1)); // dont need this if we are directly copying each mip map level rather than only top then mipmapping from top
+    initFlowXY.x /= float(pow(2, level+1)); 
     initFlowXY.y /= float(pow(2, level+1)); 
 
     
@@ -340,7 +336,7 @@ float yCoord = (( (float(gl_GlobalInvocationID.y) * 4.0 + float(psz2))) / ( floa
 //
 // LOOPING STARTS HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // 
-    for (int iter_outer = 0; iter_outer< level + 2; iter_outer++) // the more iterations the slower it becomes, obviously
+    for (int iter_outer = 0; iter_outer< level + 4; iter_outer++) // the more iterations the slower it becomes, obviously
     {
         if (iter_outer == 0)
         {
@@ -497,7 +493,7 @@ float detH = inputProd.x * inputProd.y - inputProd.z * inputProd.z;
 //imageStore(test_texture, pix_sparse, vec4(min_SSD));
 
 
-        for (int t = 0; t < level + 3; t++) // CHANE+GE ME TO ITER!!!
+        for (int t = 0; t < level + 8; t++) // CHANE+GE ME TO ITER!!!
         {
             barrier();
 
@@ -542,11 +538,9 @@ float detH = inputProd.x * inputProd.y - inputProd.z * inputProd.z;
 
         }
 
-        /* If gradient descent converged to a flow vector that is very far from the initial approximation
-                     * (more than patch size) then we don't use it. Noticeably improves the robustness.
-                     */
+
         vec2 theVec = vec2(cur_Ux - Ux, cur_Uy - Uy);
-        if (length(theVec) < 8.0)
+        if (length(theVec) < (patch_size << (level + 1)))
         {
             imageStore(im_S_x_y, pix_sparse, vec4(cur_Ux, cur_Uy, 0, 0)); 
         }
@@ -554,11 +548,11 @@ float detH = inputProd.x * inputProd.y - inputProd.z * inputProd.z;
         {
            imageStore(im_S_x_y, pix_sparse, vec4(Ux, Uy, 0, 0));
         }
-        if (prev_SSD > 0.1)
-        {
-           imageStore(im_S_x_y, pix_sparse, vec4(cur_Ux/2.0, cur_Uy/2.0, 0, 0));
+        //if (prev_SSD > 0.1)
+        //{
+           //imageStore(im_S_x_y, pix_sparse, vec4(cur_Ux/2.0, cur_Uy/2.0, 0, 0));
 
-        }
+        //}
         
         imageStore(test_texture, pix_sparse, vec4(prev_SSD));
 
@@ -742,6 +736,12 @@ void medianFilter()
 
     imageStore(flow_texture_x_y, ivec2(x,y), vec4(v[4], 0));
 
+    if (level == 0)
+    {
+        imageStore(flowArray, ivec3(x, y, currentLevel), vec4(v[4], 0));
+    }
+
+
 
 
 }
@@ -770,25 +770,25 @@ void calcStandardDeviation()
     subroutine(launchSubroutine)
 void trackPose()
 {
-    ivec2 pix = ivec2(gl_GlobalInvocationID.xy);
-    ivec2 imSize = ivec2(texSize.x, texSize.y); // set me as uniform
+    //ivec2 pix = ivec2(gl_GlobalInvocationID.xy);
+    //ivec2 imSize = ivec2(texSize.x, texSize.y); // set me as uniform
 
-    float posX = trackedPointsBuffer[(pix.x * 3)];
-    float posY = trackedPointsBuffer[(pix.x * 3) + 1];
+    //float posX = trackedPointsBuffer[(pix.x * 3)];
+    //float posY = trackedPointsBuffer[(pix.x * 3) + 1];
 
-    //posX = abs(posX - oriPosX) < 50.0 ? posX : oriPosX;
-    // posY = abs(posY - oriPosY) < 50.0 ? posY : oriPosY;
-
-
-    float xCoord = (2.0 * posX + 1.0) / (2.0 * float(imSize.x));
-    float yCoord = (2.0 * posY + 1.0) / (2.0 * float(imSize.y));
+    ////posX = abs(posX - oriPosX) < 50.0 ? posX : oriPosX;
+    //// posY = abs(posY - oriPosY) < 50.0 ? posY : oriPosY;
 
 
-    vec2 flow = textureLod(tex_flow_final, vec2(xCoord, yCoord), 0).xy;
-    //vec2 flow = texelFetch(tex_flow_final, ivec2(posX, posY), 0).xy;
+    //float xCoord = (2.0 * posX + 1.0) / (2.0 * float(imSize.x));
+    //float yCoord = (2.0 * posY + 1.0) / (2.0 * float(imSize.y));
 
-    trackedPointsBuffer[(pix.x * 3)] += flow.x;
-    trackedPointsBuffer[(pix.x * 3) + 1] += flow.y;
+
+    //vec2 flow = textureLod(tex_flow_final, vec2(xCoord, yCoord), 0).xy;
+    ////vec2 flow = texelFetch(tex_flow_final, ivec2(posX, posY), 0).xy;
+
+    //trackedPointsBuffer[(pix.x * 3)] += flow.x;
+    //trackedPointsBuffer[(pix.x * 3) + 1] += flow.y;
 
 
 }
@@ -796,30 +796,30 @@ void trackPose()
 subroutine(launchSubroutine)
 void track()
 {
-    ivec2 pix = ivec2(gl_GlobalInvocationID.xy);
-    ivec2 imSize = ivec2(texSize.x, texSize.y); // set me as uniform
+    //ivec2 pix = ivec2(gl_GlobalInvocationID.xy);
+    //ivec2 imSize = ivec2(texSize.x, texSize.y); // set me as uniform
 
-    float oriPosX = float(imSize.x - imSize.y + (pix.x * 2)) / 2.0f;
-    float oriPosY = float(imSize.x - imSize.y + (pix.y * 2)) / 2.0f;
+    //float oriPosX = float(imSize.x - imSize.y + (pix.x * 2)) / 2.0f;
+    //float oriPosY = float(imSize.x - imSize.y + (pix.y * 2)) / 2.0f;
 
-    float posX = trackedPointsBuffer[pix.y * trackWidth + (pix.x * 2)];
-    float posY = trackedPointsBuffer[pix.y * trackWidth + (pix.x * 2) + 1];
+    //float posX = trackedPointsBuffer[pix.y * trackWidth + (pix.x * 2)];
+    //float posY = trackedPointsBuffer[pix.y * trackWidth + (pix.x * 2) + 1];
 
-    //posX = abs(posX - oriPosX) < 50.0 ? posX : oriPosX;
-    // posY = abs(posY - oriPosY) < 50.0 ? posY : oriPosY;
-
-
-    float xCoord = (2.0 * posX + 1.0) / (2.0 * float(imSize.x));
-    float yCoord = (2.0 * posY + 1.0) / (2.0 * float(imSize.y));
+    ////posX = abs(posX - oriPosX) < 50.0 ? posX : oriPosX;
+    //// posY = abs(posY - oriPosY) < 50.0 ? posY : oriPosY;
 
 
-    vec2 flow = textureLod(tex_flow_final, vec2(xCoord, yCoord), 0).xy;
-    //vec2 flow = texelFetch(tex_flow_final, ivec2(posX, posY), 0).xy;
+    //float xCoord = (2.0 * posX + 1.0) / (2.0 * float(imSize.x));
+    //float yCoord = (2.0 * posY + 1.0) / (2.0 * float(imSize.y));
 
-    trackedPointsBuffer[pix.y * trackWidth + (pix.x * 2)] += flow.x;
-    trackedPointsBuffer[pix.y * trackWidth + (pix.x * 2) + 1] += flow.y;
 
-    //imageStore(test_texture, pix, vec4(currentFlow + previousFlowSum, 0, 0));
+    //vec2 flow = textureLod(tex_flow_final, vec2(xCoord, yCoord), 0).xy;
+    ////vec2 flow = texelFetch(tex_flow_final, ivec2(posX, posY), 0).xy;
+
+    //trackedPointsBuffer[pix.y * trackWidth + (pix.x * 2)] += flow.x;
+    //trackedPointsBuffer[pix.y * trackWidth + (pix.x * 2) + 1] += flow.y;
+
+    ////imageStore(test_texture, pix, vec4(currentFlow + previousFlowSum, 0, 0));
 
 
 }
@@ -850,12 +850,68 @@ subroutine(launchSubroutine)
 void deepMatching()
 {
     ivec2 pix = ivec2(gl_GlobalInvocationID.xy);
-
-
-
-
-
 }
+
+
+
+
+
+
+
+/// inputs 
+// op points
+// framenumber of the old op points
+// current framenumber
+// 2D_TEXTURE_ARRAY of flow
+/// method
+// for each point 
+// read flow from the framenumebr of the op points and get new position
+// walk through the texture array, updating position, untill reaching live framenumber
+/// output
+// position of op points at live time
+subroutine(launchSubroutine)
+void getLivePoints()
+{
+    uint jointID = gl_GlobalInvocationID.x;
+    vec2 opPoints = vec2(trackedPointsBuffer[jointID].xy);
+    vec2 currPos = opPoints;
+    int level = opLevel;
+
+    ivec3 arraySize = ivec3(imageSize(flowArray).xyz);
+
+    int targetLevel = currentLevel;// = level < currentLevel ? currentLevel
+
+    //if (level == targetLevel)
+    //{
+    //    vec2 flow = imageLoad(flowArray, ivec3(currPos, level)).xy;
+    //    currPos += flow;
+    //}
+    //else
+    //{
+        while (level != targetLevel)
+        {
+            vec2 flow = imageLoad(flowArray, ivec3(currPos, level)).xy;
+            currPos += flow;
+            level++;
+            if (level == arraySize.z)
+            {
+                level = 0;
+            }
+        }
+    //}
+
+
+
+
+    trackedPointsBuffer[jointID].z = currPos.x;
+    trackedPointsBuffer[jointID].w = currPos.y;
+}
+
+
+
+
+
+
 void main()
 {
     disFlowSubroutine();
