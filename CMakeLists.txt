@@ -40,9 +40,15 @@ find_package(realsense2 REQUIRED)
 
 find_package(OpenPose REQUIRED)
 find_package(Caffe REQUIRED)
+if (WIN32)
+find_package(glog REQUIRED)
+find_package(gFlags REQUIRED)
+find_package(hdf5 REQUIRED)
+find_package(protobuf REQUIRED)
+elseif (UNIX)
 find_package(Glog REQUIRED)
 find_package(GFlags REQUIRED)
-
+endif()
 # To find and use ffmpeg avcodec library
 find_path( AVCODEC_INCLUDE_DIR libavcodec/avcodec.h )
 find_library( AVCODEC_LIBRARY avcodec )
@@ -136,5 +142,13 @@ target_link_libraries(${PROJECT_NAME} glm)
 
 target_link_libraries(${PROJECT_NAME} realsense2::realsense-file realsense2::realsense2)
 
-target_link_libraries(${PROJECT_NAME} OpenPose::openpose ${GFLAGS_LIBRARY} ${GLOG_LIBRARY} caffe)
-	  
+if (WIN32)
+target_link_libraries(${PROJECT_NAME} OpenPose::openpose 
+					protobuf::libprotobuf
+					hdf5::hdf5-shared
+					gflags
+					glog::glog
+					caffe)
+elseif (UNIX)
+	  target_link_libraries(${PROJECT_NAME} ${OpenPose_LIBS} ${GFLAGS_LIBRARY} ${GLOG_LIBRARY} caffe)
+endif()

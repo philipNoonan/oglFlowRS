@@ -224,12 +224,17 @@ bool m_useOPFace = false;
 
 bool m_justFlowFace = false;
 
+#ifdef WIN32
 bool useDelayFlag = false;
 bool useFullResoFlag = true;
+#else
+bool useDelayFlag = true;
+bool useFullResoFlag = false;
+#endif
 
 cv::VideoWriter outWriter;
 
-float windowWidth = 10.0f;
+float windowWidth = 2.0f;
 // [person][frame][part]
 std::map<int, std::deque<std::valarray<float>>> rollingAverage;
 

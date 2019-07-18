@@ -57,8 +57,11 @@ void OPWrapper::capturingLoop()
 	float scaleGap = 0.3f;
 
 	op::ScaleAndSizeExtractor scaleAndSizeExtractor(netInputSize, outputSize, scaleNumber, scaleGap);
-
+#ifdef WIN32
 	op::PoseExtractorCaffeStaf poseExtractorCaffeStaf{ poseModel, "D://models//", 0 };
+#else
+	op::PoseExtractorCaffeStaf poseExtractorCaffeStaf{ poseModel, "/home/mocat/code/models/", 0 };
+#endif
 
 #ifdef USE_FACE
 	op::FaceExtractorCaffe faceExtractorCaffe{ faceNetInputSize , faceNetInputSize, "D://models//", 0 , {}, op::ScaleMode::UnsignedChar, false };

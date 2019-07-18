@@ -453,5 +453,5 @@ void Realsense2Interface::setColorIntrinsics(int devNumber)
 
 void Realsense2Interface::setEmitterOptions(int devNumber, bool status, float power)
 {
-	m_cameras[devNumber].setEmitterOptions(status ? 1.0f : 0.0f, power);
+	m_cameras[devNumber].setEmitterOptions(status ? 0.0f : 0.0f, power);
 }

@@ -119,6 +119,7 @@ void resetFlowSize()
 		{
 			cameraInterface.startDevice(camera, depthProfiles[camera], infraProfiles[camera], colorProfiles[camera]);
 			cameraInterface.setDepthTable(camera, 50000, 0, 100, 0, 0);
+			cameraInterface.setEmitterOptions(camera, false, 0.0f);
 
 			int wd, hd, rd;
 			int wc, hc, rc;
