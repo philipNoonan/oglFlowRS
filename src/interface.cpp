@@ -44,7 +44,7 @@ int Realsense2Interface::searchForCameras()
 		}
 		m_threads.resize(index);
 		m_cameras.resize(index);
-		
+
 		m_depthTables.resize(index);
 
 		m_depthFrames.resize(index);
@@ -119,14 +119,16 @@ void Realsense2Interface::setDepthTable(int devNumber, int depthMax, int depthMi
 
 }
 
-void Realsense2Interface::startDevice(int devNumber, int depthProfile, int colorProfile)
+void Realsense2Interface::startDevice(int devNumber, std::tuple<int, int, int, rs2_format> depthProfile, std::tuple<int, int, int, rs2_format> infraProfile, std::tuple<int, int, int, rs2_format> colorProfile)
 {
 	//Realsense2Camera camera;
 	m_cameras[devNumber].setDev(m_devices[devNumber]);
+	m_cameras[devNumber].setDepthProperties(depthProfile);
+	m_cameras[devNumber].setInfraProperties(infraProfile);
+	m_cameras[devNumber].setColorProperties(colorProfile);
 	m_cameras[devNumber].setStreams();
 	m_cameras[devNumber].setSensorOptions();
-	m_cameras[devNumber].setDepthProperties(depthProfile);
-	m_cameras[devNumber].setColorProperties(colorProfile);
+
 
 	//m_cameras[devNumber].start();
 
@@ -197,7 +199,7 @@ void Realsense2Interface::startDeviceFromFile(std::string filename, int useDepth
 	{
 		auto color_stream = selection.get_stream(RS2_STREAM_COLOR)
 			.as<rs2::video_stream_profile>();
-	
+
 		m_colorIntrinsics[0].cx = color_stream.get_intrinsics().ppx;
 		m_colorIntrinsics[0].cy = color_stream.get_intrinsics().ppy;
 		m_colorIntrinsics[0].fx = color_stream.get_intrinsics().fx;
@@ -220,12 +222,12 @@ void Realsense2Interface::startDeviceFromFile(std::string filename, int useDepth
 
 
 	}
-	
+
 
 	auto sensor = selection.get_device().first<rs2::depth_sensor>();
 	m_depthUnitFromFile = sensor.get_depth_scale() * 1000000.0f;
 
-	
+
 	//return numberOfRealsense;
 
 }
@@ -367,7 +369,7 @@ bool Realsense2Interface::collateFramesFromFile()
 
 	if (m_pipe.poll_for_frames(&frames)) // Check if new frames are ready
 	{
-		depth = frames.get_depth_frame(); 
+		depth = frames.get_depth_frame();
 		m_depthQueues[0].enqueue(depth);
 
 #ifdef USE_COLOR
@@ -375,7 +377,7 @@ bool Realsense2Interface::collateFramesFromFile()
 		m_colorQueues[0].enqueue(color);
 #endif
 	}
-	
+
 	//m_cameras[0].getFramesFromFile(m_depthQueues[0], m_colorQueues[0]);
 	frameReady = true;
 

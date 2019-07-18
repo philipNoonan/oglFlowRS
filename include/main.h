@@ -54,9 +54,9 @@ Respiration respiration;
 OPWrapper opwrapper;
 
 Realsense2Interface cameraInterface;
-std::vector<int> depthProfiles;
-std::vector<int> colorProfiles;
-std::vector<int> infraProfiles;
+std::vector<std::tuple<int, int, int, rs2_format>> depthProfiles;
+std::vector<std::tuple<int, int, int, rs2_format>> colorProfiles;
+std::vector<std::tuple<int, int, int, rs2_format>> infraProfiles;
 
 std::vector<glm::ivec2> depthFrameSize;
 std::vector<glm::ivec2> colorFrameSize;
@@ -123,7 +123,7 @@ float vertFov = 40.0f;
 
 float valA = 0.01f;
 float valB = 0.01f;
-int texLevel = 1;
+int texLevel = 0;
 int cutoff = 0;
 
 bool useWebcamFlag = 1;
@@ -224,12 +224,21 @@ bool m_useOPFace = false;
 
 bool m_justFlowFace = false;
 
-bool useDelayFlag = true;
-bool useFullResoFlag = false;
+bool useDelayFlag = false;
+bool useFullResoFlag = true;
 
 cv::VideoWriter outWriter;
 
-float windowWidth = 1.0f;
+float windowWidth = 10.0f;
 // [person][frame][part]
 std::map<int, std::deque<std::valarray<float>>> rollingAverage;
+
+
+int desiredWidth = 848;
+int desiredHeight = 480;
+int desiredRate = 90;
+
+int desiredColorWidth = 848;
+int desiredColorHeight = 480;
+int desiredColorRate = 60;
 

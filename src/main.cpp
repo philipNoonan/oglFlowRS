@@ -107,26 +107,23 @@ void resetFlowSize()
 
 	if (numberOfCameras > 0)
 	{
-		depthProfiles.resize(numberOfCameras, 208); // 71 on 435, 211 on 415
-		colorProfiles.resize(numberOfCameras, 66); // 0 1920x1080x30 rgb8 // 13 1920x1080x6 rgb8
-		infraProfiles.resize(numberOfCameras, 10); // 15 on 435 35 on 415
+		infraProfiles.resize(numberOfCameras, std::make_tuple(desiredWidth, desiredHeight, desiredRate, RS2_FORMAT_Y8));
+		depthProfiles.resize(numberOfCameras, std::make_tuple(desiredWidth, desiredHeight, desiredRate, RS2_FORMAT_Z16));
+		colorProfiles.resize(numberOfCameras, std::make_tuple(desiredColorWidth, desiredColorHeight, desiredColorRate, RS2_FORMAT_RGB8));
+
 		depthFrameSize.resize(numberOfCameras);
 		colorFrameSize.resize(numberOfCameras);
 		infraFrameSize.resize(numberOfCameras);
 
 		for (int camera = 0; camera < numberOfCameras; camera++)
 		{
-			cameraInterface.startDevice(camera, depthProfiles[camera], colorProfiles[camera]);
+			cameraInterface.startDevice(camera, depthProfiles[camera], infraProfiles[camera], colorProfiles[camera]);
 			cameraInterface.setDepthTable(camera, 50000, 0, 100, 0, 0);
-			cameraInterface.setEmitterOptions(camera, false, 100.0f);
 
 			int wd, hd, rd;
 			int wc, hc, rc;
 			cameraInterface.getDepthProperties(camera, wd, hd, rd);
 			cameraInterface.getColorProperties(camera, wc, hc, rc);
-
-			//colorToDepth[camera] = cameraInterface.getColorToDepthExtrinsics(camera);
-			//depthToColor[camera] = cameraInterface.getDepthToColorExtrinsics(camera);
 
 			depthFrameSize[camera].x = wd;
 			depthFrameSize[camera].y = hd;
@@ -221,7 +218,7 @@ int main(int, char**)
 	// rollingAverage.resize(15, std::deque<std::valarray<float>> (windowWidth, std::valarray<float>(63)));
 
 
-
+	//cv::Mat imageFromFile = cv::imread("D://data//hyperKinetic//image3.jpg");
 
 	double lastTime = glfwGetTime();
 	// Main loop
@@ -248,6 +245,8 @@ int main(int, char**)
 
 			if (!infra.empty())
 			{
+
+
 				opwrapper.setImage(infra);
 			}
 			gflow.setLevelCutoff(useFullResoFlag);

@@ -136,5 +136,5 @@ target_link_libraries(${PROJECT_NAME} glm)
 
 target_link_libraries(${PROJECT_NAME} realsense2::realsense-file realsense2::realsense2)
 
-target_link_libraries(${PROJECT_NAME} ${OpenPose_LIBS} ${GFLAGS_LIBRARY} ${GLOG_LIBRARY} caffe)
+target_link_libraries(${PROJECT_NAME} OpenPose::openpose ${GFLAGS_LIBRARY} ${GLOG_LIBRARY} caffe)
 	  

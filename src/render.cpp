@@ -16,7 +16,8 @@ GLFWwindow * gRender::loadGLFWWindow()
 	glfwWindowHint(GLFW_RESIZABLE, GL_TRUE);
 	glEnable(GL_DEPTH_TEST);
 
-	m_window = glfwCreateWindow(m_screen_width, m_screen_height, "oglflow", glfwGetPrimaryMonitor(), nullptr);
+	//m_window = glfwCreateWindow(m_screen_width, m_screen_height, "oglflow", glfwGetPrimaryMonitor(), nullptr);
+	m_window = glfwCreateWindow(m_screen_width, m_screen_height, "oglflow", nullptr, nullptr);
 
 	if (m_window == nullptr)
 	{
@@ -620,6 +621,10 @@ void gRender::renderLiveVideoWindow(bool useInfrared)
 
 		if (m_showPointFlag)
 		{
+
+			glm::vec2 imageSize = glm::vec2(m_color_width, m_color_height);
+			
+
 			glBindVertexArray(m_poseVAO);
 			//glBindVertexArray(m_VAO);
 
@@ -628,6 +633,7 @@ void gRender::renderLiveVideoWindow(bool useInfrared)
 			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_poseEBO);
 			glUniformSubroutinesuiv(GL_VERTEX_SHADER, 1, &m_fromPosePoints2DID);
 			glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &m_fromPointsID);
+			glUniform2fv(m_imSizeID, 1, glm::value_ptr(imageSize));
 
 			for (int person = 0; person < m_bodyPosePoints.size(); person++)
 			{
