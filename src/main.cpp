@@ -368,10 +368,10 @@ int main(int, char**)
 		//	respiration.smoothSignal(neckDepth, "depth");
 		//}
 
-		//if (neckFlow != 0.0f)
-		//{
-		//	respiration.smoothSignal(neckFlow, "flow");
-		//}
+		if (neckFlow != 0.0f)
+		{
+			respiration.smoothSignal(neckFlow, "flow");
+		}
 
 			glfwPollEvents();
 			ImGui_ImplGlfwGL3_NewFrame();
