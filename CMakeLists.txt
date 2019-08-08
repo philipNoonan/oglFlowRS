@@ -45,13 +45,18 @@ find_package(glog REQUIRED)
 find_package(gFlags REQUIRED)
 find_package(hdf5 REQUIRED)
 find_package(protobuf REQUIRED)
+
+# To find and use ffmpeg avcodec library
+find_path( AVCODEC_INCLUDE_DIR libavcodec/avcodec.h )
+find_library( AVCODEC_LIBRARY avcodec )
+
 elseif (UNIX)
 find_package(Glog REQUIRED)
 find_package(GFlags REQUIRED)
 endif()
-# To find and use ffmpeg avcodec library
-find_path( AVCODEC_INCLUDE_DIR libavcodec/avcodec.h )
-find_library( AVCODEC_LIBRARY avcodec )
+
+
+
 
 
 file(GLOB_RECURSE SRC "src/*")
@@ -123,10 +128,11 @@ add_dependencies(${PROJECT_NAME} shaders resources)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_PDB_NAME_DEBUG "${PROJECT_NAME}${CMAKE_DEBUG_POSTFIX}")
 
+if (WIN32)
 # FFMPEG
 target_include_directories( ${PROJECT_NAME} PUBLIC  ${AVCODEC_INCLUDE_DIR} )
 target_link_libraries( ${PROJECT_NAME}  ${AVCODEC_LIBRARY})
-
+endif() # win32
 
 target_include_directories(${PROJECT_NAME} PUBLIC "include")
 target_include_directories(${PROJECT_NAME} PUBLIC "graphics")
