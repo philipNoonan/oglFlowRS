@@ -60,12 +60,6 @@ Press "Open Project"
 
 <h4>Ubuntu</h4>
 
-For the moment, ensure that you are on the nano branch.
-```
-git clone https://github.com/philipNoonan/oglFlowRS
-cd oglFlowRS
-git checkout nano
-```
 Easy bits:
 
 sudo apt-get install libglew-dev 
