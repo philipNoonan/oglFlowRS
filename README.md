@@ -58,7 +58,7 @@ Press "Generate"
 
 Press "Open Project"
 
-<h4>Ubuntu</h4>
+<h3>Installing on Ubuntu and/or the Jetson Nano</h3>
 
 Easy bits:
 
