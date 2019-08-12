@@ -46,15 +46,10 @@ void searchForMedia()
 	videosFromFile.resize(0);
 	imagesFromFile.resize(0);
 
-	//cv::String pathVideos("videos/*.avi"); //select only wmv
-	cv::String pathVideos("videos/*.wmv"); //select only wmv
-
-	//cv::String pathVideos("videos/*.mkv"); //select only wmv
-	//cv::String pathVideos("videos/*.mp4"); //select only mkv
-	//cv::String pathVideos("videos/*.MP4"); //select only mkv
+	cv::String pathVideos("videos/*.wmv"); 
 
 	std::vector<cv::String> fnVideos;
-	cv::glob(pathVideos, fnVideos, true); // recurse
+	cv::glob(pathVideos, fnVideos, true);
 
 
 
@@ -440,14 +435,6 @@ int main(int, char**)
 				if (ImGui::Button("Full reso")) useFullResoFlag ^= 1; ImGui::SameLine(); ImGui::Checkbox("", &useFullResoFlag);
 
 				if (ImGui::Button("Reset flow points")) gflow.clearPoints();
-				//if (ImGui::Button("Reset")) OCVStuff.resetColorPoints();
-
-				//if (ImGui::Button("Reset Depth")) krender.resetRegistrationMatrix();
-
-				//if (ImGui::Button("Export PLY")) krender.setExportPly(true);
-				//if (ImGui::Button("Export PLY")) krender.exportPointCloud();
-				//if (ImGui::Button("Save Color")) OCVStuff.saveImage(0); // saving color image (flag == 0)
-
 
 				ImGui::Separator();
 				ImGui::Text("View Transforms");
@@ -480,10 +467,6 @@ int main(int, char**)
 
 			if (changedSource)
 			{
-				// if use video
-				// do soemthign 
-				// if use webcam
-				// do somethign else
 				resetFlowSize();
 			}
 

@@ -77,11 +77,14 @@ void OPWrapper::capturingLoop()
 	handExtractorCaffe.initializationOnThread();
 	handRenderer.initializationOnThread();
 #endif
+#ifdef TEST_OUTPUT
 
 
+#endif
 	op::CvMatToOpInput cvMatToOpInput;
 	op::CvMatToOpOutput cvMatToOpOutput;
 	op::OpOutputToCvMat opOutputToCvMat;
+
 
 
 	poseExtractorCaffeStaf.initializationOnThread();
