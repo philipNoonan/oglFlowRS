@@ -129,11 +129,11 @@ void Realsense2Camera::setStreams()
 		if (stream_profile.is<rs2::video_stream_profile>()) //"Is" will test if the type tested is of the type given
 		{
 			rs2::video_stream_profile video_stream_profile = stream_profile.as<rs2::video_stream_profile>();
-					
-			if (stream_index == 0 && video_stream_profile.format() == std::get<3>(m_depthStreamChoice) 
-				                   && video_stream_profile.width() == std::get<0>(m_depthStreamChoice) 
-				                  && video_stream_profile.height() == std::get<1>(m_depthStreamChoice)
-				                     && video_stream_profile.fps() == std::get<2>(m_depthStreamChoice))
+
+			if (stream_index == 0 && video_stream_profile.format() == std::get<3>(m_depthStreamChoice)
+				&& video_stream_profile.width() == std::get<0>(m_depthStreamChoice)
+				&& video_stream_profile.height() == std::get<1>(m_depthStreamChoice)
+				&& video_stream_profile.fps() == std::get<2>(m_depthStreamChoice))
 			{
 				m_depthStreamID = profile_num;
 				std::cout << std::setw(3) << profile_num << ": " << stream_data_type << " #" << stream_index;
@@ -143,9 +143,9 @@ void Realsense2Camera::setStreams()
 			}
 
 			if (stream_index == 1 && video_stream_profile.format() == std::get<3>(m_infraStreamChoice)
-				                   && video_stream_profile.width() == std::get<0>(m_infraStreamChoice)
-				                  && video_stream_profile.height() == std::get<1>(m_infraStreamChoice)
-				                     && video_stream_profile.fps() == std::get<2>(m_infraStreamChoice))
+				&& video_stream_profile.width() == std::get<0>(m_infraStreamChoice)
+				&& video_stream_profile.height() == std::get<1>(m_infraStreamChoice)
+				&& video_stream_profile.fps() == std::get<2>(m_infraStreamChoice))
 			{
 				m_infraStreamID = profile_num;
 				std::cout << std::setw(3) << profile_num << ": " << stream_data_type << " #" << stream_index;
@@ -153,7 +153,7 @@ void Realsense2Camera::setStreams()
 					video_stream_profile.width() << "x" << video_stream_profile.height() << "@ " << video_stream_profile.fps() << "Hz)" << std::endl;;
 
 			}
-		
+
 		}
 		//std::cout << std::endl;
 		profile_num++;
@@ -171,11 +171,11 @@ void Realsense2Camera::setStreams()
 		if (stream_profile.is<rs2::video_stream_profile>()) //"Is" will test if the type tested is of the type given
 		{
 			rs2::video_stream_profile video_stream_profile = stream_profile.as<rs2::video_stream_profile>();
-			
+
 			if (stream_index == 0 && video_stream_profile.format() == std::get<3>(m_colorStreamChoice)
-				                   && video_stream_profile.width() == std::get<0>(m_colorStreamChoice)
-				                  && video_stream_profile.height() == std::get<1>(m_colorStreamChoice)
-				                     && video_stream_profile.fps() == std::get<2>(m_colorStreamChoice))
+				&& video_stream_profile.width() == std::get<0>(m_colorStreamChoice)
+				&& video_stream_profile.height() == std::get<1>(m_colorStreamChoice)
+				&& video_stream_profile.fps() == std::get<2>(m_colorStreamChoice))
 			{
 				m_colorStreamID = colprofile_num;
 				std::cout << std::setw(3) << colprofile_num << ": " << stream_data_type << " #" << stream_index;
@@ -183,7 +183,7 @@ void Realsense2Camera::setStreams()
 					video_stream_profile.width() << "x" << video_stream_profile.height() << "@ " << video_stream_profile.fps() << "Hz)" << std::endl;
 
 			}
-	
+
 		}
 		//std::cout << std::endl;
 		colprofile_num++;
@@ -241,18 +241,18 @@ void Realsense2Camera::setEmitterOptions(float status, float power)
 
 bool Realsense2Camera::start()
 {
-		m_sensors[1].open(m_stream_profiles_color[m_colorStreamID]); //848 480 60fps rgb8
-		std::thread colThread = std::thread(&Realsense2Camera::colorThread, this, std::ref(m_sensors[1]));
-		colThread.detach();
+	m_sensors[1].open(m_stream_profiles_color[m_colorStreamID]); //848 480 60fps rgb8
+	std::thread colThread = std::thread(&Realsense2Camera::colorThread, this, std::ref(m_sensors[1]));
+	colThread.detach();
 
-		std::vector<rs2::stream_profile> sp = { m_stream_profiles_depthIR[m_infraStreamID], m_stream_profiles_depthIR[m_depthStreamID] };
-		//std::vector<rs2::stream_profile> sp = { m_stream_profiles_depthIR[35], m_stream_profiles_depthIR[m_depthStreamChoice] };
+	std::vector<rs2::stream_profile> sp = { m_stream_profiles_depthIR[m_infraStreamID], m_stream_profiles_depthIR[m_depthStreamID] };
+	//std::vector<rs2::stream_profile> sp = { m_stream_profiles_depthIR[35], m_stream_profiles_depthIR[m_depthStreamChoice] };
 
-		m_sensors[0].open(sp); // depth 848*480@90
-		std::thread depThread = std::thread(&Realsense2Camera::depthThread, this, std::ref(m_sensors[0]));
-		depThread.detach();
+	m_sensors[0].open(sp); // depth 848*480@90
+	std::thread depThread = std::thread(&Realsense2Camera::depthThread, this, std::ref(m_sensors[0]));
+	depThread.detach();
 
-		
+
 	return false;
 }
 
@@ -260,7 +260,7 @@ bool Realsense2Camera::startFromFile()
 {
 
 	m_sensors[1].open(m_stream_profiles_color[m_colorStreamID]); //848 480 60fps rgb8
-	
+
 	m_sensors[0].open(m_stream_profiles_depthIR[m_depthStreamID]); // depth 848*480@90
 
 
@@ -379,12 +379,12 @@ void Realsense2Camera::capture()
 			// Trying to get both other and aligned depth frames
 			//rs2::video_frame other_frame = processed.first(align_to);
 			//rs2::depth_frame aligned_depth_frame = m_dataProcessed.get_depth_frame();
-			
+
 			rs2::frame depth = m_data.get_depth_frame(); // Find and colorize the depth data
 			rs2::frame color = m_data.get_color_frame();            // Find the color data
 			//if (depth.supports_frame_metadata(RS2_FRAME_METADATA_FRAME_TIMESTAMP))
 
-			
+
 			if (depth.supports_frame_metadata(RS2_FRAME_METADATA_TIME_OF_ARRIVAL))
 			{
 				m_frameArrivalTime = depth.get_frame_metadata(RS2_FRAME_METADATA_TIME_OF_ARRIVAL);
@@ -392,7 +392,7 @@ void Realsense2Camera::capture()
 				uint64_t deltaTime = currentTime - previousTime;
 				//if (deltaTime > (1e6f / (float)m_depthRate) * 1.5f) // if greater than 1.5 frame duration in microseconds
 				//{
-					std::cout << deltaTime << std::endl;
+				std::cout << deltaTime << std::endl;
 				//}
 				previousTime = currentTime;
 			}
@@ -404,7 +404,6 @@ void Realsense2Camera::capture()
 			// Query frame size (width and height)
 			/*const int w = color.as<rs2::video_frame>().get_width();
 			const int h = color.as<rs2::video_frame>().get_height();
-
 			const int wD = depth.as<rs2::video_frame>().get_width();
 			const int hD = depth.as<rs2::video_frame>().get_height();*/
 
@@ -452,8 +451,8 @@ bool Realsense2Camera::getFrames(rs2::frame_queue &depthQ, rs2::frame_queue &col
 
 bool Realsense2Camera::getFramesFromFile(rs2::frame_queue &depthQ, rs2::frame_queue &colorQ)
 {
-	
-	
+
+
 
 	//m_depthQueue.enqueue(dep);
 
@@ -469,7 +468,7 @@ rs2_intrinsics Realsense2Camera::getDepthIntrinsics()
 {
 	auto video_stream = m_stream_profiles_depthIR[m_depthStreamID].as<rs2::video_stream_profile>();
 	return video_stream.get_intrinsics();
-	
+
 	//If the stream is indeed a video stream, we can now simply call get_intrinsics()
 	//if (rs2::depth_sensor dpt_sensor = m_depthSensor.as<rs2::depth_sensor>())
 	//{
@@ -503,7 +502,7 @@ uint32_t Realsense2Camera::getDepthUnit()
 rs2_extrinsics Realsense2Camera::getDepthToColorExtrinsics()
 {
 	rs2_extrinsics outExtrin;
-	try 
+	try
 	{
 		outExtrin = m_stream_profiles_depthIR[m_depthStreamID].get_extrinsics_to(m_stream_profiles_color[m_colorStreamID]);
 		//outExtrin = m_stream_profiles_color[m_colorStreamChoice].get_extrinsics_to(m_stream_profiles_depthIR[m_depthStreamChoice]);
@@ -543,5 +542,3 @@ rs2_extrinsics Realsense2Camera::getColorToDepthExtrinsics()
 	}
 	return outExtrin;
 }
-
-

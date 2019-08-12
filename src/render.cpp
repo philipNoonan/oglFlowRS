@@ -16,6 +16,7 @@ GLFWwindow * gRender::loadGLFWWindow()
 	glfwWindowHint(GLFW_RESIZABLE, GL_TRUE);
 	glEnable(GL_DEPTH_TEST);
 
+	//m_window = glfwCreateWindow(m_screen_width, m_screen_height, "oglflow", glfwGetPrimaryMonitor(), nullptr);
 	m_window = glfwCreateWindow(m_screen_width, m_screen_height, "oglflow", nullptr, nullptr);
 
 	if (m_window == nullptr)
@@ -29,7 +30,7 @@ GLFWwindow * gRender::loadGLFWWindow()
 	//glfwSwapInterval(1); // Enable vsync
 	glewExperimental = GL_TRUE;
 
-	if (glewInit() != GLEW_OK) 
+	if (glewInit() != GLEW_OK)
 	{
 		std::cout << "Failed to initialize GLEW" << std::endl;
 		//return -1;
@@ -213,20 +214,20 @@ void gRender::allocateBuffers()
 	//glBufferData(GL_ARRAY_BUFFER, m_standard_verts.size() * sizeof(float), &m_standard_verts[0], GL_DYNAMIC_DRAW);
 	//glBindVertexArray(0);
 
-	std::vector<float> bodyPosePoints(21*3, 0.75);
+	std::vector<float> bodyPosePoints(21 * 3, 0.75);
 
 	std::vector<uint32_t> bodyPosePairs = { 1, 8, 1, 2, 1,
-						        5, 2, 3, 3, 4,
-						        5, 6, 6, 7, 8,
-						        9, 9, 10, 10, 11,
-						        8, 12, 12, 13, 13,
-						        14, 1, 0, 0, 15,
-						        15, 17, 0, 16, 16,
-						        18, 1, 19, 19, 20,
-						        2, 9, 5, 12 };
+								5, 2, 3, 3, 4,
+								5, 6, 6, 7, 8,
+								9, 9, 10, 10, 11,
+								8, 12, 12, 13, 13,
+								14, 1, 0, 0, 15,
+								15, 17, 0, 16, 16,
+								18, 1, 19, 19, 20,
+								2, 9, 5, 12 };
 
 	glGenVertexArrays(1, &m_poseVAO);
-    glGenBuffers(1, &m_poseVBO);
+	glGenBuffers(1, &m_poseVBO);
 	glGenBuffers(1, &m_poseEBO);
 
 	glBindVertexArray(m_poseVAO);
@@ -251,7 +252,7 @@ void gRender::allocateBuffers()
 
 }
 
-void gRender::setBuffers(GLuint quadList, GLuint quadlistMeanTemp) 
+void gRender::setBuffers(GLuint quadList, GLuint quadlistMeanTemp)
 {
 	m_bufferQuadlist = quadList;
 	m_bufferQuadlistMeanTemp = quadlistMeanTemp;
@@ -309,7 +310,7 @@ void gRender::setTextures(GLuint depthTex, GLuint colorTex, GLuint edgesTex, GLu
 	m_textureColor = colorTex;
 	m_textureEdges = edgesTex;
 	m_textureFlowMinusMeanFlow = fmmfTex;
-	
+
 
 }
 void gRender::setFlowTexture(GLuint flowTex)
@@ -403,7 +404,7 @@ void gRender::setColorImageRenderPosition(float vertFov)
 }
 
 
-void gRender::setFlowImageRenderPosition(int width, int height, float vertFov) 
+void gRender::setFlowImageRenderPosition(int width, int height, float vertFov)
 {
 	int w, h;
 	glfwGetFramebufferSize(m_window, &w, &h);
@@ -417,12 +418,12 @@ void gRender::setFlowImageRenderPosition(int width, int height, float vertFov)
 	//float halfHeightAtDist = (float)h * 4;
 	//float halfWidthAtDistance = (float)w * 4;
 	//m_model_color = glm::translate(glm::mat4(1.0f), glm::vec3(-m_color_width / 2.0f, -halfHeightAtDist, -zDist));
-	glm::vec3 scaleVec = glm::vec3(1.f,1.f, 1.0f);
+	glm::vec3 scaleVec = glm::vec3(1.f, 1.f, 1.0f);
 
 	//m_model_flow = glm::scale(glm::mat4(1.0f), scaleVec);
 	m_model_flow = glm::translate(glm::mat4(1.0f), glm::vec3(-width / 2.0f, -height / 2.0f, -zDist));
 
-	}
+}
 
 
 void gRender::setViewMatrix(float xRot, float yRot, float zRot, float xTran, float yTran, float zTran)
@@ -460,191 +461,192 @@ void gRender::renderLiveVideoWindow(bool useInfrared)
 
 
 
-		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		renderProg.use();
-		glm::mat4 MVP;
+	//glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	renderProg.use();
+	glm::mat4 MVP;
+	glm::vec2 imageSize = glm::vec2(m_color_width, m_color_height);
+
+	if (m_showDepthFlag)
+	{
+		glm::vec2 imageSize;
+
+		imageSize = glm::vec2(m_color_width, m_color_height);
+		MVP = m_projection * m_view * m_model_color;
+
+		glBindVertexArray(m_VAO);
+
+		glUniformSubroutinesuiv(GL_VERTEX_SHADER, 1, &m_fromStandardTextureID);
+		glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &m_fromDepthID);
+		glUniformMatrix4fv(m_MvpID, 1, GL_FALSE, glm::value_ptr(MVP));
+		glUniform2fv(m_imSizeID, 1, glm::value_ptr(imageSize));
+		glUniform1i(m_texLevelID, m_texLevel);
+		glUniform1f(m_zOffID, 0.0f);
+
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+
+
+	}
+
+	if (m_showColorFlag)
+	{
+		glm::vec2 imageSize;
+
+		imageSize = glm::vec2(m_color_width, m_color_height);
+		MVP = m_projection * m_view * m_model_color;
+
+		//glTexParameteri(m_textureColor, GL_TEXTURE_MAG_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+		//glTexParameteri(m_textureColor, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+		glBindVertexArray(m_VAO);
+
+		glUniformSubroutinesuiv(GL_VERTEX_SHADER, 1, &m_fromStandardTextureID);
+		glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &m_fromColorID);
+		//glUniformMatrix4fv(m_ProjectionID, 1, GL_FALSE, glm::value_ptr(m_projection));
+		glUniformMatrix4fv(m_MvpID, 1, GL_FALSE, glm::value_ptr(MVP));
+		glUniform2fv(m_imSizeID, 1, glm::value_ptr(imageSize));
+		glUniform1i(m_texLevelID, m_texLevel);
+		glUniform1f(m_zOffID, 0.0f);
+
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+
+		//glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+		//glTexParameteri(m_textureColor, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_NEAREST);
+		//glTexParameteri(m_textureColor, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
+	}
+
+	if (m_showEdgesFlag)
+	{
+		glm::vec2 imageSize;
+
+		imageSize = glm::vec2(m_color_width, m_color_height);
+		MVP = m_projection * m_view * m_model_color;
+
+		glBindVertexArray(m_VAO);
+		glUniformSubroutinesuiv(GL_VERTEX_SHADER, 1, &m_fromStandardTextureID);
+		glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &m_fromEdgesID);
+		glUniformMatrix4fv(m_MvpID, 1, GL_FALSE, glm::value_ptr(MVP));
+		glUniform2fv(m_imSizeID, 1, glm::value_ptr(imageSize));
+		glUniform1f(m_zOffID, 0.0f);
+
+		//glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+
+	}
+
+	if (m_showFlowFlag)
+	{
+		glm::vec2 imageSize;
+
+		imageSize = glm::vec2(m_color_width, m_color_height);
+		MVP = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -5.0f));
+
+		glBindVertexArray(m_VAO);
+		//MVP = glm::translate(MVP, glm::vec3(0.0f, 0.0f, 0.25f));
+		glUniformSubroutinesuiv(GL_VERTEX_SHADER, 1, &m_fromStandardTextureID);
+		glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &m_fromFlowID);
+		//glUniformMatrix4fv(m_ProjectionID, 1, GL_FALSE, glm::value_ptr(m_projection));
+		glUniformMatrix4fv(m_MvpID, 1, GL_FALSE, glm::value_ptr(MVP));
+		glUniform1f(m_zOffID, -0.1f);
+		glUniform2fv(m_imSizeID, 1, glm::value_ptr(imageSize));
+		glUniform1i(m_texLevelID, m_texLevel);
+		//glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+
+	}
+
+	if (m_showDistanceFlag)
+	{
+		glm::vec2 imageSize;
+
+		imageSize = glm::vec2(m_color_width, m_color_height);
+		MVP = m_projection * m_view * m_model_color;
+
+		glBindVertexArray(m_VAO);
+		MVP = glm::translate(MVP, glm::vec3(0.0f, 0.0f, 5.0f));
+		glUniformSubroutinesuiv(GL_VERTEX_SHADER, 1, &m_fromStandardTextureID);
+		glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &m_fromDistanceID);
+		//glUniformMatrix4fv(m_ProjectionID, 1, GL_FALSE, glm::value_ptr(m_projection));
+		glUniformMatrix4fv(m_MvpID, 1, GL_FALSE, glm::value_ptr(MVP));
+		glUniform2fv(m_imSizeID, 1, glm::value_ptr(imageSize));
+		glUniform1i(m_texLevelID, m_texLevel);
+		glUniform1f(m_zOffID, 0.0f);
+
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+
+		//glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+
+	}
+
+	if (m_showQuadsFlag)
+	{
+		// here we will pass the quadlist buffer
+		// the vertex shader will create pixels quads centered at the center of the quad and of the correct size
+		// in the fragment shader we will get the std dev from the quad and 
+		// if the std dev is below a thresh, the output gl fragment color is the pass through quad colour
+		// if std dev is high, then it is unreliable flow, and output flow is written as zero
+
+		glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
+		//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+		MVP = m_projection * m_view * glm::translate(m_model_color, glm::vec3(0.0f, 0.0f, 0.5f));
+
+		glBindVertexArray(m_VAO);
+		//MVP = glm::translate(MVP, glm::vec3(0.0f, 0.0f, 0.5f));
+
+		glEnableVertexAttribArray(11);
+		glBindBuffer(GL_ARRAY_BUFFER, m_bufferQuadlist);
+		glEnableVertexAttribArray(12);
+		glBindBuffer(GL_ARRAY_BUFFER, m_bufferQuadlistMeanTemp);
+
+		//MVP = glm::translate(MVP, glm::vec3(0.0f, 0.0f, 0.5f));
+		glActiveTexture(GL_TEXTURE3);
+		glBindTexture(GL_TEXTURE_2D, m_textureFlowMinusMeanFlow);
+
+		//glUniformMatrix4fv(m_MvpFlowID, 1, GL_FALSE, glm::value_ptr(MVP));
+		glUniformMatrix4fv(m_MvpID, 1, GL_FALSE, glm::value_ptr(MVP));
+		glUniform2fv(m_imSizeID, 1, glm::value_ptr(imageSize));
+
+		glUniformSubroutinesuiv(GL_VERTEX_SHADER, 1, &m_fromQuadlistID);
+		glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &m_fromQuadtreeID);
+		//glDrawArrays(GL_POINTS, 0, 2);
+		glUniform1f(m_zOffID, -0.2f);
+
+		//glDrawArrays(GL_TRIANGLES, 0, 6);
+
+		glDrawArrays(GL_POINTS, 0, m_quadlistCount);
+
+
+	}
+
+	if (m_showPointFlag)
+	{
+
 		glm::vec2 imageSize = glm::vec2(m_color_width, m_color_height);
 
-		if (m_showDepthFlag)
+
+		glBindVertexArray(m_poseVAO);
+		//glBindVertexArray(m_VAO);
+
+		glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
+
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_poseEBO);
+		glUniformSubroutinesuiv(GL_VERTEX_SHADER, 1, &m_fromPosePoints2DID);
+		glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &m_fromPointsID);
+		glUniform2fv(m_imSizeID, 1, glm::value_ptr(imageSize));
+
+		for (int person = 0; person < m_bodyPosePoints.size(); person++)
 		{
-			glm::vec2 imageSize;
-
-			imageSize = glm::vec2(m_color_width, m_color_height);
-			MVP = m_projection * m_view * m_model_color;
-
-			glBindVertexArray(m_VAO);
-
-			glUniformSubroutinesuiv(GL_VERTEX_SHADER, 1, &m_fromStandardTextureID);
-			glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &m_fromDepthID);
-			glUniformMatrix4fv(m_MvpID, 1, GL_FALSE, glm::value_ptr(MVP));
-			glUniform2fv(m_imSizeID, 1, glm::value_ptr(imageSize));
-			glUniform1i(m_texLevelID, m_texLevel);
-			glUniform1f(m_zOffID, 0.0f);
-
-			glDrawArrays(GL_TRIANGLES, 0, 6);
-
+			glBindBuffer(GL_ARRAY_BUFFER, m_poseVBO);
+			glBufferSubData(GL_ARRAY_BUFFER, 0, m_bodyPosePoints[person].size() * sizeof(float), m_bodyPosePoints[person].data());
+			glDrawElements(GL_LINES, 44, GL_UNSIGNED_INT, 0);
+			glDrawArrays(GL_POINTS, 0, m_bodyPosePoints[person].size() / 3);
 
 		}
 
-		if (m_showColorFlag)
-		{
-			glm::vec2 imageSize;
-
-			imageSize = glm::vec2(m_color_width, m_color_height);
-			MVP = m_projection * m_view * m_model_color;
-
-			//glTexParameteri(m_textureColor, GL_TEXTURE_MAG_FILTER, GL_NEAREST_MIPMAP_NEAREST);
-			//glTexParameteri(m_textureColor, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
-			glBindVertexArray(m_VAO);
-
-			glUniformSubroutinesuiv(GL_VERTEX_SHADER, 1, &m_fromStandardTextureID);
-			glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &m_fromColorID);
-			//glUniformMatrix4fv(m_ProjectionID, 1, GL_FALSE, glm::value_ptr(m_projection));
-			glUniformMatrix4fv(m_MvpID, 1, GL_FALSE, glm::value_ptr(MVP));
-			glUniform2fv(m_imSizeID, 1, glm::value_ptr(imageSize));
-			glUniform1i(m_texLevelID, m_texLevel);
-			glUniform1f(m_zOffID, 0.0f);
-
-			glDrawArrays(GL_TRIANGLES, 0, 6);
-
-			//glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-			//glTexParameteri(m_textureColor, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_NEAREST);
-			//glTexParameteri(m_textureColor, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
-		}
-
-		if (m_showEdgesFlag)
-		{
-			glm::vec2 imageSize;
-
-			imageSize = glm::vec2(m_color_width, m_color_height);
-			MVP = m_projection * m_view * m_model_color;
-
-			glBindVertexArray(m_VAO);
-			glUniformSubroutinesuiv(GL_VERTEX_SHADER, 1, &m_fromStandardTextureID);
-			glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &m_fromEdgesID);
-			glUniformMatrix4fv(m_MvpID, 1, GL_FALSE, glm::value_ptr(MVP));
-			glUniform2fv(m_imSizeID, 1, glm::value_ptr(imageSize));
-			glUniform1f(m_zOffID, 0.0f);
-
-			//glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-			glDrawArrays(GL_TRIANGLES, 0, 6);
-
-		}
-
-		if (m_showFlowFlag)
-		{
-			glm::vec2 imageSize;
-
-			imageSize = glm::vec2(m_color_width, m_color_height);
-			MVP = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -5.0f));
-
-			glBindVertexArray(m_VAO);
-			//MVP = glm::translate(MVP, glm::vec3(0.0f, 0.0f, 0.25f));
-			glUniformSubroutinesuiv(GL_VERTEX_SHADER, 1, &m_fromStandardTextureID);
-			glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &m_fromFlowID);
-			//glUniformMatrix4fv(m_ProjectionID, 1, GL_FALSE, glm::value_ptr(m_projection));
-			glUniformMatrix4fv(m_MvpID, 1, GL_FALSE, glm::value_ptr(MVP));
-			glUniform1f(m_zOffID, -0.1f);
-			glUniform2fv(m_imSizeID, 1, glm::value_ptr(imageSize));
-			glUniform1i(m_texLevelID, m_texLevel);
-			//glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-			glDrawArrays(GL_TRIANGLES, 0, 6);
-
-		}
-
-		if (m_showDistanceFlag)
-		{
-			glm::vec2 imageSize;
-
-			imageSize = glm::vec2(m_color_width, m_color_height);
-			MVP = m_projection * m_view * m_model_color;
-
-			glBindVertexArray(m_VAO);
-			MVP = glm::translate(MVP, glm::vec3(0.0f, 0.0f, 5.0f));
-			glUniformSubroutinesuiv(GL_VERTEX_SHADER, 1, &m_fromStandardTextureID);
-			glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &m_fromDistanceID);
-			//glUniformMatrix4fv(m_ProjectionID, 1, GL_FALSE, glm::value_ptr(m_projection));
-			glUniformMatrix4fv(m_MvpID, 1, GL_FALSE, glm::value_ptr(MVP));
-			glUniform2fv(m_imSizeID, 1, glm::value_ptr(imageSize));
-			glUniform1i(m_texLevelID, m_texLevel);
-			glUniform1f(m_zOffID, 0.0f);
-
-			glDrawArrays(GL_TRIANGLES, 0, 6);
-
-			//glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
 
-		}
-
-		if (m_showQuadsFlag)
-		{
-			// here we will pass the quadlist buffer
-			// the vertex shader will create pixels quads centered at the center of the quad and of the correct size
-			// in the fragment shader we will get the std dev from the quad and 
-			// if the std dev is below a thresh, the output gl fragment color is the pass through quad colour
-			// if std dev is high, then it is unreliable flow, and output flow is written as zero
-			
-			glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
-			//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-			MVP = m_projection * m_view * glm::translate(m_model_color, glm::vec3(0.0f, 0.0f, 0.5f));
-
-			glBindVertexArray(m_VAO);
-			//MVP = glm::translate(MVP, glm::vec3(0.0f, 0.0f, 0.5f));
-
-			glEnableVertexAttribArray(11);
-			glBindBuffer(GL_ARRAY_BUFFER, m_bufferQuadlist);
-			glEnableVertexAttribArray(12);
-			glBindBuffer(GL_ARRAY_BUFFER, m_bufferQuadlistMeanTemp);
-
-			//MVP = glm::translate(MVP, glm::vec3(0.0f, 0.0f, 0.5f));
-			glActiveTexture(GL_TEXTURE3);
-			glBindTexture(GL_TEXTURE_2D, m_textureFlowMinusMeanFlow);
-
-			//glUniformMatrix4fv(m_MvpFlowID, 1, GL_FALSE, glm::value_ptr(MVP));
-			glUniformMatrix4fv(m_MvpID, 1, GL_FALSE, glm::value_ptr(MVP));
-			glUniform2fv(m_imSizeID, 1, glm::value_ptr(imageSize));
-
-			glUniformSubroutinesuiv(GL_VERTEX_SHADER, 1, &m_fromQuadlistID);
-			glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &m_fromQuadtreeID);
-			//glDrawArrays(GL_POINTS, 0, 2);
-			glUniform1f(m_zOffID, -0.2f);
-
-			//glDrawArrays(GL_TRIANGLES, 0, 6);
-
-			glDrawArrays(GL_POINTS, 0, m_quadlistCount);
-
-
-		}
-
-		if (m_showPointFlag)
-		{
-			glBindVertexArray(m_poseVAO);
-			//glBindVertexArray(m_VAO);
-
-			glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
-
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_poseEBO);
-			glUniformSubroutinesuiv(GL_VERTEX_SHADER, 1, &m_fromPosePoints2DID);
-			glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &m_fromPointsID);
-			glm::vec2 imageSize;
-
-			imageSize = glm::vec2(m_color_width, m_color_height);
-			for (int person = 0; person < m_bodyPosePoints.size(); person++)
-			{
-				glUniform2fv(m_imSizeID, 1, glm::value_ptr(imageSize));
-
-				glBindBuffer(GL_ARRAY_BUFFER, m_poseVBO);
-				glBufferSubData(GL_ARRAY_BUFFER, 0, m_bodyPosePoints[person].size() * sizeof(float), m_bodyPosePoints[person].data());
-				glDrawElements(GL_LINES, 44, GL_UNSIGNED_INT, 0);
-				glDrawArrays(GL_POINTS, 0, m_bodyPosePoints[person].size() / 3);
-
-			}
-			
-
-
-		}
+	}
 
 
 
@@ -666,5 +668,3 @@ void gRender::renderLiveVideoWindow(bool useInfrared)
 
 
 }
-
-

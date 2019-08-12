@@ -46,19 +46,14 @@ void searchForMedia()
 	videosFromFile.resize(0);
 	imagesFromFile.resize(0);
 
-	//cv::String pathVideos("videos/*.avi"); //select only wmv
-	cv::String pathVideos("videos/*.wmv"); //select only wmv
-
-	//cv::String pathVideos("videos/*.mkv"); //select only wmv
-	//cv::String pathVideos("videos/*.mp4"); //select only mkv
-	//cv::String pathVideos("videos/*.MP4"); //select only mkv
+	cv::String pathVideos("videos/*.wmv");
 
 	std::vector<cv::String> fnVideos;
-	cv::glob(pathVideos, fnVideos, true); // recurse
+	cv::glob(pathVideos, fnVideos, true);
 
 
 
-	for (size_t k = 0; k<fnVideos.size(); ++k) 
+	for (size_t k = 0; k < fnVideos.size(); ++k)
 	{
 		std::cout << fnVideos[k] << std::endl;
 
@@ -83,7 +78,7 @@ void searchForMedia()
 	cv::String pathImages("images/*.png"); //select only jpg
 	std::vector<cv::String> fnImages;
 	cv::glob(pathImages, fnImages, true); // recurse
-	for (size_t k = 0; k<fnImages.size(); ++k)
+	for (size_t k = 0; k < fnImages.size(); ++k)
 	{
 		std::cout << fnImages[k] << std::endl;
 
@@ -119,15 +114,12 @@ void resetFlowSize()
 		{
 			cameraInterface.startDevice(camera, depthProfiles[camera], infraProfiles[camera], colorProfiles[camera]);
 			cameraInterface.setDepthTable(camera, 50000, 0, 100, 0, 0);
-			cameraInterface.setEmitterOptions(camera, false, 100.0f);
+			cameraInterface.setEmitterOptions(camera, false, 0.0f);
 
 			int wd, hd, rd;
 			int wc, hc, rc;
 			cameraInterface.getDepthProperties(camera, wd, hd, rd);
 			cameraInterface.getColorProperties(camera, wc, hc, rc);
-
-			//colorToDepth[camera] = cameraInterface.getColorToDepthExtrinsics(camera);
-			//depthToColor[camera] = cameraInterface.getDepthToColorExtrinsics(camera);
 
 			depthFrameSize[camera].x = wd;
 			depthFrameSize[camera].y = hd;
@@ -149,7 +141,7 @@ void resetFlowSize()
 	gflow.allocateBuffers();
 	gflow.allocateOffscreenRendering();
 
-	
+
 
 	changedSource = false;
 }
@@ -179,8 +171,13 @@ int main(int, char**)
 	ImGui_ImplGlfwGL3_Init(window, true);
 	ImVec4 clear_color = ImColor(114, 144, 154);
 
+	resoPresetPair.push_back(std::make_pair(640, 480));
+	resoPresetPair.push_back(std::make_pair(960, 540));
+	resoPresetPair.push_back(std::make_pair(1280, 720));
+	resoPresetPair.push_back(std::make_pair(1920, 1080));
 
-
+	colorWidth = resoPresetPair[resoPreset].first;
+	colorHeight = resoPresetPair[resoPreset].second;
 
 	//gflow.setupEKF();
 	// op flow init
@@ -213,19 +210,16 @@ int main(int, char**)
 	opwrapper.start();
 
 	//rollingAverage.resize(windowWidth);
-    // [person][frame][part]
+	// [person][frame][part]
 	// rollingAverage.resize(15, std::deque<std::valarray<float>> (windowWidth, std::valarray<float>(63)));
 
 
-
+	//cv::Mat imageFromFile = cv::imread("D://data//hyperKinetic//image3.jpg");
 
 	double lastTime = glfwGetTime();
 	// Main loop
 	while (!glfwWindowShouldClose(window))
 	{
-
-		gflow.setCameraDevice(cameraDevice);
-
 		glfwGetFramebufferSize(window, &display_w, &display_h);
 
 		//// Rendering
@@ -242,14 +236,16 @@ int main(int, char**)
 			gflow.setInfraTexture(cameraInterface.getInfraQueues(), infra);
 			gflow.setColorTexture(cameraInterface.getColorQueues(), col);
 
-
+			//cv::imshow("cols", col);
+			//cv::waitKey(1);
 
 			if (!infra.empty())
 			{
-				//cv::imshow("cols", infra);
-				//cv::waitKey(1);
-				opwrapper.setImage(infra, gflow.getCurrentLevel());
+
+
+				opwrapper.setImage(infra);
 			}
+			gflow.setLevelCutoff(useFullResoFlag);
 
 			gflow.calc(true);
 			//gflow.track();
@@ -271,31 +267,20 @@ int main(int, char**)
 				grender.setDistanceTexture(gflood.getFloodOutputTexture());
 			}
 
-			frameNumber++; // MAY BE OUT BY 1
-			gflow.setCurrentLevel(frameNumber);
-			if (opwrapper.isNewData())
-			{
-				opwrapper.setDataRead();
-				int opFrameNumber = opwrapper.getOPFrameNumber();
-				gflow.setOpLevel(opFrameNumber);
-			}
 		}
 
 		//std::cout << opwrapper.getPoses() << std::endl;
 		cv::Mat poses;
-		cv::Mat faces;
 		std::vector<int> poseIds;
-		opwrapper.getPoses(poses, faces, poseIds);
+		opwrapper.setUseDelay(useDelayFlag);
+		opwrapper.getPoses(poses, poseIds);
 
 		if (!poses.empty())
 		{
 			cv::Size poseSize = poses.size();
-			cv::Size faceSize = faces.size();
 
 			std::vector<std::valarray<float>> bpp(poseSize.height, std::valarray<float>(poseSize.width * 3));
 			std::vector<std::valarray<float>> RA(poseSize.height, std::valarray<float>(poseSize.width * 3));
-			std::vector<std::valarray<float>> faceVec(faceSize.height, std::valarray<float>(faceSize.width * 3));
-
 			std::vector<glm::vec2> neckPos(poseSize.height);
 
 			for (int person = 0; person < poseSize.height; person++)
@@ -361,40 +346,22 @@ int main(int, char**)
 
 				// [person][frame][part]
 
-				//faces
-				for (int facePart = 0; facePart < faceSize.width; facePart++)
-				{
-					if (faces.at<cv::Vec3f>(person, facePart)[2] > 0)
-					{
-						faceVec[person][facePart * 3] = faces.at<cv::Vec3f>(person, facePart)[0];
-						faceVec[person][facePart * 3 + 1] = faces.at<cv::Vec3f>(person, facePart)[1];
-						faceVec[person][facePart * 3 + 2] = faces.at<cv::Vec3f>(person, facePart)[2];
-					}
-					
-
-					//std::cout << "x : " << x << " y : " << y << std::endl;
-
-				}
-
-
 			}
 
 			grender.setBodyPosePoints(RA);
 			respiration.setTarget(neckPos);
-			//gflow.smoothPoints(faceVec);
-			gflow.smoothPoints(RA);
 
 		}
 
 		respiration.calc();
 
-		//float neckDepth = respiration.getFromDepth();
+		float neckDepth = respiration.getFromDepth();
 		float neckFlow = respiration.getFromFlow();
 
-		////if (neckDepth != 0.0f)
-		////{
-		////	respiration.smoothSignal(neckDepth, "depth");
-		////}
+		//if (neckDepth != 0.0f)
+		//{
+		//	respiration.smoothSignal(neckDepth, "depth");
+		//}
 
 		if (neckFlow != 0.0f)
 		{
@@ -450,18 +417,6 @@ int main(int, char**)
 
 			ImGui::Separator();
 			ImGui::Text("View Options");
-			ImGui::SameLine();
-			if (ImGui::Button("Camera 0"))
-			{
-				gflow.wipeFlow();
-				cameraDevice = 0;
-			}
-			ImGui::SameLine();
-			if (ImGui::Button("Camera 1"))
-			{
-				gflow.wipeFlow();
-				cameraDevice = 1;
-			}
 
 			if (ImGui::Button("Show Color")) showColorFlag ^= 1; ImGui::SameLine(); ImGui::Checkbox("", &showColorFlag); ImGui::SameLine(); if (ImGui::Button("Show Depth")) showDepthFlag ^= 1; ImGui::SameLine(); ImGui::Checkbox("", &showDepthFlag);
 
@@ -476,15 +431,10 @@ int main(int, char**)
 			ImGui::Separator();
 			ImGui::Text("Other Options");
 
+			if (ImGui::Button("Use delay")) useDelayFlag ^= 1; ImGui::SameLine(); ImGui::Checkbox("", &useDelayFlag);
+			if (ImGui::Button("Full reso")) useFullResoFlag ^= 1; ImGui::SameLine(); ImGui::Checkbox("", &useFullResoFlag);
+
 			if (ImGui::Button("Reset flow points")) gflow.clearPoints();
-			//if (ImGui::Button("Reset")) OCVStuff.resetColorPoints();
-
-			//if (ImGui::Button("Reset Depth")) krender.resetRegistrationMatrix();
-
-			//if (ImGui::Button("Export PLY")) krender.setExportPly(true);
-			//if (ImGui::Button("Export PLY")) krender.exportPointCloud();
-			//if (ImGui::Button("Save Color")) OCVStuff.saveImage(0); // saving color image (flag == 0)
-
 
 			ImGui::Separator();
 			ImGui::Text("View Transforms");
@@ -517,10 +467,6 @@ int main(int, char**)
 
 		if (changedSource)
 		{
-			// if use video
-			// do soemthign 
-			// if use webcam
-			// do somethign else
 			resetFlowSize();
 		}
 
@@ -528,14 +474,9 @@ int main(int, char**)
 		//grender.setComputeWindowPosition();
 		//gfusion.render();
 		glfwSwapBuffers(window);
-
-		{
-			//using namespace std::chrono_literals;
-			//std::this_thread::sleep_for(0.012s);
-		}
 	}
 
-	
+
 
 	// Cleanup DO SOME CLEANING!!!
 	ImGui_ImplGlfwGL3_Shutdown();

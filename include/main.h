@@ -4,7 +4,7 @@
 
 #define GL_GPU_MEM_INFO_TOTAL_AVAILABLE_MEM_NVX 0x9048
 #define GL_GPU_MEM_INFO_CURRENT_AVAILABLE_MEM_NVX 0x9049
-
+#define GLM_ENABLE_EXPERIMENTAL
 #include <stdio.h>
 #include <iostream>
 #define GLUT_NO_LIB_PRAGMA
@@ -58,8 +58,6 @@ std::vector<std::tuple<int, int, int, rs2_format>> depthProfiles;
 std::vector<std::tuple<int, int, int, rs2_format>> colorProfiles;
 std::vector<std::tuple<int, int, int, rs2_format>> infraProfiles;
 
-
-
 std::vector<glm::ivec2> depthFrameSize;
 std::vector<glm::ivec2> colorFrameSize;
 std::vector<glm::ivec2> infraFrameSize;
@@ -102,9 +100,9 @@ int colorHeight;
 bool showDepthFlag = false;
 bool showBigDepthFlag = false;
 bool showInfraFlag = false;
-bool showColorFlag = false;
+bool showColorFlag = true;
 bool showLightFlag = false;
-bool showPointFlag = false;
+bool showPointFlag = true;
 bool useOpenPoseFlag = false;
 bool pauseOpenFlowFlag = false;
 bool pauseFlowFlag = false;
@@ -138,7 +136,7 @@ float yRot = 0.0f;
 float xTran = 0.0f;
 float yTran = 0.0f;
 float zTran = 2000.0f;
-void resetSliders() 
+void resetSliders()
 {
 	vertFov = 40.0f;
 	xRot = 0.0f;
@@ -226,14 +224,20 @@ bool m_useOPFace = false;
 
 bool m_justFlowFace = false;
 
+#ifdef WIN32
+bool useDelayFlag = false;
+bool useFullResoFlag = true;
+#else
+bool useDelayFlag = true;
+bool useFullResoFlag = false;
+#endif
 
 cv::VideoWriter outWriter;
 
-float windowWidth = 10.0f;
+float windowWidth = 2.0f;
 // [person][frame][part]
 std::map<int, std::deque<std::valarray<float>>> rollingAverage;
 
-int frameNumber = 0;
 
 int desiredWidth = 848;
 int desiredHeight = 480;
@@ -241,6 +245,4 @@ int desiredRate = 90;
 
 int desiredColorWidth = 848;
 int desiredColorHeight = 480;
-int desiredColorRate = 30;
-
-int cameraDevice = 0;
+int desiredColorRate = 60;

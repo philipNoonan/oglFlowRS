@@ -13,6 +13,7 @@
 
 #include <librealsense2/rs.hpp> // Include RealSense Cross Platform API
 #include <librealsense2/rs_advanced_mode.hpp>
+#include <thread>
 
 class Realsense2Camera
 {
@@ -31,7 +32,7 @@ public:
 		m_status = STOPPED;
 	};
 
-	~Realsense2Camera() 
+	~Realsense2Camera()
 	{
 		if (m_status == CAPTURING)
 		{
@@ -91,7 +92,7 @@ private:
 	int m_colorHeight;
 	int m_colorWidth;
 	int m_colorRate;
-	
+
 	std::string m_configFilename;
 	bool m_valuesChanged = false;
 	uint64_t m_frameArrivalTime = 0;

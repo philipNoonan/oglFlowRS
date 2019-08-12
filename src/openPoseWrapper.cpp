@@ -1,6 +1,8 @@
 #include "openPoseWrapper.h"
 
-
+//#define USE_FACE
+//#define USE_HAND
+//#define USE_RENDER
 
 void OPWrapper::start()
 {
@@ -12,10 +14,8 @@ void OPWrapper::start()
 	}
 }
 
-void OPWrapper::setImage(cv::Mat image, int frameNumber)
+void OPWrapper::setImage(cv::Mat image)
 {
-	m_temp_opFrameNumber = frameNumber;
-	//std::cout << "temp number : " << m_temp_opFrameNumber << std::endl;
 	//image.copyTo(m_inputImage);
 	if (image.channels() == 1)
 	{
@@ -23,7 +23,9 @@ void OPWrapper::setImage(cv::Mat image, int frameNumber)
 	}
 	else if (image.channels() == 3)
 	{
-		cv::cvtColor(image, m_inputImage, cv::COLOR_BGR2RGB);
+		//cv::cvtColor(image, m_inputImage, cv::COLOR_BGR2RGB);
+		image.copyTo(m_inputImage);
+
 	}
 	else if (image.channels() == 4)
 	{
@@ -35,14 +37,15 @@ void OPWrapper::setImage(cv::Mat image, int frameNumber)
 
 void OPWrapper::stop()
 {
-	
+
 }
 
 void OPWrapper::capturingLoop()
 {
 	op::Point<int> outputSize(-1, -1);
-	op::Point<int> netInputSize(368, 368);
+	op::Point<int> netInputSize(192, 192);
 	op::Point<int> faceNetInputSize(368, 368);
+	op::Point<int> handNetInputSize(368, 368);
 
 	op::Wrapper opWrapper{ op::ThreadManagerMode::Synchronous };
 	op::PoseMode poseMode(op::PoseMode::Enabled);
@@ -54,36 +57,48 @@ void OPWrapper::capturingLoop()
 	float scaleGap = 0.3f;
 
 	op::ScaleAndSizeExtractor scaleAndSizeExtractor(netInputSize, outputSize, scaleNumber, scaleGap);
-
+#ifdef WIN32
 	op::PoseExtractorCaffeStaf poseExtractorCaffeStaf{ poseModel, "D://models//", 0 };
-	//op::PoseCpuRenderer poseRenderer{ poseModel, 0.05f, true, 0.05f };
+#else
+	op::PoseExtractorCaffeStaf poseExtractorCaffeStaf{ poseModel, "/home/mocat/code/models/", 0 };
+#endif
 
-	//op::FaceExtractorCaffe faceExtractorCaffe{ faceNetInputSize , faceNetInputSize, "D://models//", 0 , {}, op::ScaleMode::UnsignedChar, false };
-	//op::FaceDetector faceDetector{ poseModel };
-	//op::FaceCpuRenderer faceRenderer{ 0.05f };
-	//faceExtractorCaffe.initializationOnThread();
-	//faceRenderer.initializationOnThread();
+#ifdef USE_FACE
+	op::FaceExtractorCaffe faceExtractorCaffe{ faceNetInputSize , faceNetInputSize, "D://models//", 0 , {}, op::ScaleMode::UnsignedChar, false };
+	op::FaceDetector faceDetector{ poseModel };
+	op::FaceCpuRenderer faceRenderer{ 0.05f };
+	faceExtractorCaffe.initializationOnThread();
+	faceRenderer.initializationOnThread();
+#endif
+#ifdef USE_HAND
+	op::HandExtractorCaffe handExtractorCaffe{ handNetInputSize , handNetInputSize, "D://models//", 0 };
+	op::HandDetector handDetector{ poseModel };
+	op::HandCpuRenderer handRenderer{ 0.05f };
+	handExtractorCaffe.initializationOnThread();
+	handRenderer.initializationOnThread();
+#endif
+#ifdef TEST_OUTPUT
 
 
-
-
-
+#endif
 	op::CvMatToOpInput cvMatToOpInput;
 	op::CvMatToOpOutput cvMatToOpOutput;
 	op::OpOutputToCvMat opOutputToCvMat;
 
 
-	poseExtractorCaffeStaf.initializationOnThread();
-	//poseRenderer.initializationOnThread();
 
-	//op::GuiInfoAdder guiInfoAdder{ 1, true };
+	poseExtractorCaffeStaf.initializationOnThread();
+
+#ifdef USE_RENDER
+	op::PoseCpuRenderer poseRenderer{ poseModel, 0.05f, true, 0.05f };
+	poseRenderer.initializationOnThread();
+#endif
+	op::GuiInfoAdder guiInfoAdder{ 1, true };
 
 
 
 	while (m_status == CAPTURING)
 	{
-		int currFN = m_temp_opFrameNumber;
-		//std::cout << "starting processing " << currFN << std::endl;
 
 		const op::Point<int> imageSize{ m_inputImage.cols, m_inputImage.rows };
 		std::vector<double> scaleInputToNetInputs;
@@ -102,25 +117,14 @@ void OPWrapper::capturingLoop()
 		const auto poseKeypoints = poseExtractorCaffeStaf.getPoseKeypoints();
 		const auto poseIds = poseExtractorCaffeStaf.getPoseIds();
 
-		//const auto faceRectsOP = faceDetector.detectFaces(poseKeypoints);
-
-		//faceExtractorCaffe.forwardPass(faceRectsOP, m_inputImage);
-
+#ifdef USE_FACE
+		const auto faceRectsOP = faceDetector.detectFaces(poseKeypoints);
+		faceExtractorCaffe.forwardPass(faceRectsOP, m_inputImage);
+#endif
 		auto poses = poseExtractorCaffeStaf.getPoseKeypoints().clone();
-		{
-			//using namespace std::chrono_literals;
-			//std::this_thread::sleep_for(0.05s);
-
-		}
-		//const auto faceKeypoints = faceExtractorCaffe.getFaceKeypoints();
-		//auto faces = faceKeypoints.clone();
 
 		m_mtx.lock();
-		m_opFrameNumber = currFN;
-		//std::cout << "op number : " << m_opFrameNumber << std::endl;
-
 		m_detectedKeyPointsPose = poses.getConstCvMat().clone();
-		//m_detectedKeyPointsFace = faces.getConstCvMat().clone();
 		m_detectedPoseIds.resize(poseIds.getSize(0));
 		for (int person = 0; person < poses.getSize(0); person++)
 		{
@@ -128,26 +132,35 @@ void OPWrapper::capturingLoop()
 			{
 				m_detectedPoseIds[person] = poseIds.at(person);
 			}
-			m_newData = true;
 		}
 		m_mtx.unlock();
-
-		//poseRenderer.renderPose(outputArray, poseKeypoints, scaleInputToOutput, -1.0f, poseIds);
-
+#ifdef USE_RENDER
+		poseRenderer.renderPose(outputArray, poseKeypoints, scaleInputToOutput, -1.0f, poseIds);
+#endif
+#ifdef USE_FACE
 		// Step 5 - Render poseKeypoints
-		//faceRenderer.renderFace(outputArray, faceKeypoints, scaleInputToOutput);
-		 
-		 // Step 6 - OpenPose output format to cv::Mat
-		//auto outputImage = opOutputToCvMat.formatToCvMat(outputArray);
+		const auto faceKeypoints = faceExtractorCaffe.getFaceKeypoints();
+		faceRenderer.renderFace(outputArray, faceKeypoints, scaleInputToOutput);
+#endif
+#ifdef USE_HAND
+		const auto handKeypoints = handExtractorCaffe.getHandKeypoints();
+		handRenderer.renderHand(outputArray, handKeypoints, scaleInputToOutput);
+		// Step 6 - OpenPose output format to cv::Mat
+#endif
+
+#ifdef USE_RENDER
+		auto outputImage = opOutputToCvMat.formatToCvMat(outputArray);
 
 		//guiInfoAdder.addInfo(outputImage, 69, 8008, "sup bros", 8008135, poseIds, poseKeypoints);
-		
-		//cv::imshow("points", outputImage);
-		//cv::waitKey(1);
 
+		cv::imshow("points", outputImage);
+		cv::waitKey(1);
+#endif
 
-		//std::cout << "finsihed processing " << m_temp_opFrameNumber << std::endl;
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(m_delay));
 
+		}
 
 	}
 

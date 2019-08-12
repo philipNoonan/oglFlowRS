@@ -74,8 +74,6 @@ vec4 fromPosition2D()
 subroutine(getPosition)
 vec4 fromPosePoints2D()
 {
-
-
     gl_PointSize = 10;//
 	//zDepth = posePoints.z;
 	if (posePoints.x == 0 || posePoints.y == 0 || posePoints.z < 0.05f)
@@ -87,7 +85,7 @@ vec4 fromPosePoints2D()
 		dropVertex = 0.0f;
 	}
 
-	return vec4(vec4(posePoints.x / (imSize.x / 2) - 1.0, 1.0f - posePoints.y / (imSize.y / 2), -0.4f, 1.0f));
+	return vec4(vec4(posePoints.x / (imSize.x / 2.0f) - 1.0, 1.0f - posePoints.y / (imSize.y / 2.0f), -0.4f, 1.0f));
 
 }
 
