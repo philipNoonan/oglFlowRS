@@ -104,7 +104,7 @@ void resetFlowSize()
 	{
 		infraProfiles.resize(numberOfCameras, std::make_tuple(desiredWidth, desiredHeight, desiredRate, RS2_FORMAT_Y8));
 		depthProfiles.resize(numberOfCameras, std::make_tuple(desiredWidth, desiredHeight, desiredRate, RS2_FORMAT_Z16));
-		colorProfiles.resize(numberOfCameras, std::make_tuple(desiredColorWidth, desiredColorHeight, desiredColorRate, RS2_FORMAT_RGB8));
+		colorProfiles.resize(numberOfCameras, std::make_tuple(desiredColorWidth, desiredColorHeight, desiredColorRate, RS2_FORMAT_RGBA8));
 
 		depthFrameSize.resize(numberOfCameras);
 		colorFrameSize.resize(numberOfCameras);
@@ -114,7 +114,7 @@ void resetFlowSize()
 		{
 			cameraInterface.startDevice(camera, depthProfiles[camera], infraProfiles[camera], colorProfiles[camera]);
 			cameraInterface.setDepthTable(camera, 50000, 0, 100, 0, 0);
-			cameraInterface.setEmitterOptions(camera, false, 0.0f);
+			cameraInterface.setEmitterOptions(camera, true, 100.0f);
 
 			int wd, hd, rd;
 			int wc, hc, rc;
@@ -137,7 +137,7 @@ void resetFlowSize()
 	//gflow.clearTexturesAndBuffers();
 	gflow.setNumLevels(infraFrameSize[0].x);
 	gflow.setTextureParameters(infraFrameSize[0].x, infraFrameSize[0].y);
-	gflow.allocateTextures(1);
+	gflow.allocateTextures(4);
 	gflow.allocateBuffers();
 	gflow.allocateOffscreenRendering();
 
@@ -209,12 +209,66 @@ int main(int, char**)
 
 	opwrapper.start();
 
+
+	std::string modelFileName = "D:/data/pose/outputPoses.txt";
+
+	std::ofstream outFile(modelFileName, std::ios::out);
+
+	if (!outFile)
+	{
+		//cerr << "Error opening output file: " << FileName << "!" << endl;
+		printf("Error opening output file: %s!\n", modelFileName);
+		exit(1);
+	}
+
 	//rollingAverage.resize(windowWidth);
 	// [person][frame][part]
 	// rollingAverage.resize(15, std::deque<std::valarray<float>> (windowWidth, std::valarray<float>(63)));
 
 
 	//cv::Mat imageFromFile = cv::imread("D://data//hyperKinetic//image3.jpg");
+
+
+	//std::ifstream inFile(modelFileName, std::ios::in | std::ios::binary);
+	//std::streampos size;
+	//char* memblock;
+
+	//if (inFile.is_open())
+	//{
+	//	size = inFile.tellg();
+	//	memblock = new char[size];
+	//	inFile.seekg(0, std::ios::beg);
+	//	inFile.read(memblock, size);
+	//	inFile.close();
+
+
+
+	//}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	std::vector<uint16_t> alignedDepth;
+
+
+
+
 
 	double lastTime = glfwGetTime();
 	// Main loop
@@ -236,18 +290,25 @@ int main(int, char**)
 			gflow.setInfraTexture(cameraInterface.getInfraQueues(), infra);
 			gflow.setColorTexture(cameraInterface.getColorQueues(), col);
 
+			gflow.alignDepthColor(
+				cameraInterface.getDepthUnit(0) / 1000000.0f,
+				cameraInterface.getDepthToColorExtrinsics(0), 
+				glm::vec4(cameraInterface.getDepthIntrinsics(0).cx, cameraInterface.getDepthIntrinsics(0).cy, cameraInterface.getDepthIntrinsics(0).fx, cameraInterface.getDepthIntrinsics(0).fy),
+				glm::vec4(cameraInterface.getColorIntrinsics(0).cx, cameraInterface.getColorIntrinsics(0).cy, cameraInterface.getColorIntrinsics(0).fx, cameraInterface.getColorIntrinsics(0).fy),
+				alignedDepth);
+
 			//cv::imshow("cols", col);
 			//cv::waitKey(1);
 
-			if (!infra.empty())
+			if (!col.empty())
 			{
 
 
-				opwrapper.setImage(infra);
+				opwrapper.setImage(col);
 			}
 			gflow.setLevelCutoff(useFullResoFlag);
 
-			gflow.calc(true);
+			gflow.calc(false);
 			//gflow.track();
 			if (showQuadsFlag)
 			{
@@ -277,7 +338,52 @@ int main(int, char**)
 
 		if (!poses.empty())
 		{
+			int numberDetected = poseIds.size();
+
 			cv::Size poseSize = poses.size();
+
+
+			// output how many people detected in this frame
+			//outFile.write((char*)&numberDetected, sizeof(int));
+			outFile << numberDetected << " ";
+			for (int person = 0; person < numberDetected; person++)
+			{
+				// say which person this is, should be unique in this frame
+				//outFile.write((char*)&poseIds[person], sizeof(int));
+				outFile << poseIds[person] << " ";
+				for (int part = 0; part < poseSize.width; part++)
+				{
+					float xPix = poses.at<cv::Vec3f>(person, part)[0];
+					float yPix = poses.at<cv::Vec3f>(person, part)[1];
+					float conf = poses.at<cv::Vec3f>(person, part)[2];
+
+
+					uint16_t depth = alignedDepth[yPix * desiredWidth + xPix];
+					float z = (cameraInterface.getDepthUnit(0) / 1000000.0f) * (float)depth;
+
+					glm::vec3 vertex = glm::vec3((xPix - cameraInterface.getColorIntrinsics(0).cx) * z * (1.0f / cameraInterface.getColorIntrinsics(0).fx),
+												 (yPix - cameraInterface.getColorIntrinsics(0).cy) * z * (1.0f / cameraInterface.getColorIntrinsics(0).fy),
+												 z);
+
+					// output all 21 x 3 body points (plus depth!!!)
+					//outFile.write((char*)&poses.at<cv::Vec3f>(person, part)[0], sizeof(float));
+					//outFile.write((char*)&poses.at<cv::Vec3f>(person, part)[1], sizeof(float));
+					//outFile.write((char*)&poses.at<cv::Vec3f>(person, part)[2], sizeof(float));
+					outFile << vertex.x << " ";
+					outFile << vertex.y << " ";
+					outFile << vertex.z << " ";
+
+					//outFile << xPix << " ";
+					//outFile << yPix << " ";
+					//outFile << z << " ";
+
+					outFile << conf << " ";
+
+				}
+			}
+
+			outFile << std::endl;
+
 
 			std::vector<std::valarray<float>> bpp(poseSize.height, std::valarray<float>(poseSize.width * 3));
 			std::vector<std::valarray<float>> RA(poseSize.height, std::valarray<float>(poseSize.width * 3));

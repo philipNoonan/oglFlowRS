@@ -145,15 +145,15 @@ void loadImage(ivec2 pos, ivec2 localDataLoc)
     {
         // gauss smoothed
         //localData[localDataLoc.x][localDataLoc.y] = luminance(imageLoad(InputImgUI, pos).xyz);
-        int shift = 1;
-        localData[localDataLoc.x][localDataLoc.y] = luminance(texelFetch(tex_I0, ivec2(pos.x - shift, pos.y - shift), level).xyz) * 0.077847f + luminance(texelFetch(tex_I0, ivec2(pos.x, pos.y - shift), level).xyz) * 0.123317f + luminance(texelFetch(tex_I0, ivec2(pos.x + shift, pos.y - shift), level).xyz) * 0.077847f +
-                                             luminance(texelFetch(tex_I0, ivec2(pos.x - shift, pos.y), level).xyz) * 0.123317f + luminance(texelFetch(tex_I0, ivec2(pos.x, pos.y), level).xyz) * 0.195346f + luminance(texelFetch(tex_I0, ivec2(pos.x + shift, pos.y), level).xyz) * 0.123317f +
-                                             luminance(texelFetch(tex_I0, ivec2(pos.x - shift, pos.y + 1), level).xyz) * 0.077847f + luminance(texelFetch(tex_I0, ivec2(pos.x, pos.y + shift), level).xyz) * 0.123317f + luminance(texelFetch(tex_I0, ivec2(pos.x + shift, pos.y + shift), level).xyz) * 0.077847f;
-
         //int shift = 1;
-        //localData[localDataLoc.x][localDataLoc.y] = luminance(imageLoad(InputImgUI, ivec2(pos.x - shift, pos.y - shift)).xyz) * 0.077847f + luminance(imageLoad(InputImgUI, ivec2(pos.x, pos.y - shift)).xyz) * 0.123317f + luminance(imageLoad(InputImgUI, ivec2(pos.x + shift, pos.y - shift)).xyz) * 0.077847f +
-        //                                     luminance(imageLoad(InputImgUI, ivec2(pos.x - shift, pos.y)).xyz) * 0.123317f + luminance(imageLoad(InputImgUI, ivec2(pos.x, pos.y)).xyz) * 0.195346f + luminance(imageLoad(InputImgUI, ivec2(pos.x + shift, pos.y)).xyz) * 0.123317f +
-        //                                     luminance(imageLoad(InputImgUI, ivec2(pos.x - shift, pos.y + 1)).xyz) * 0.077847f + luminance(imageLoad(InputImgUI, ivec2(pos.x, pos.y + shift)).xyz) * 0.123317f + luminance(imageLoad(InputImgUI, ivec2(pos.x + shift, pos.y + shift)).xyz) * 0.077847f;
+        //localData[localDataLoc.x][localDataLoc.y] = luminance(texelFetch(tex_I0, ivec2(pos.x - shift, pos.y - shift), level).xyz) * 0.077847f + luminance(texelFetch(tex_I0, ivec2(pos.x, pos.y - shift), level).xyz) * 0.123317f + luminance(texelFetch(tex_I0, ivec2(pos.x + shift, pos.y - shift), level).xyz) * 0.077847f +
+        //                                     luminance(texelFetch(tex_I0, ivec2(pos.x - shift, pos.y), level).xyz) * 0.123317f + luminance(texelFetch(tex_I0, ivec2(pos.x, pos.y), level).xyz) * 0.195346f + luminance(texelFetch(tex_I0, ivec2(pos.x + shift, pos.y), level).xyz) * 0.123317f +
+        //                                     luminance(texelFetch(tex_I0, ivec2(pos.x - shift, pos.y + 1), level).xyz) * 0.077847f + luminance(texelFetch(tex_I0, ivec2(pos.x, pos.y + shift), level).xyz) * 0.123317f + luminance(texelFetch(tex_I0, ivec2(pos.x + shift, pos.y + shift), level).xyz) * 0.077847f;
+
+        int shift = 1;
+        localData[localDataLoc.x][localDataLoc.y] = luminance(imageLoad(InputImgUI, ivec2(pos.x - shift, pos.y - shift)).xyz) * 0.077847f + luminance(imageLoad(InputImgUI, ivec2(pos.x, pos.y - shift)).xyz) * 0.123317f + luminance(imageLoad(InputImgUI, ivec2(pos.x + shift, pos.y - shift)).xyz) * 0.077847f +
+                                             luminance(imageLoad(InputImgUI, ivec2(pos.x - shift, pos.y)).xyz) * 0.123317f + luminance(imageLoad(InputImgUI, ivec2(pos.x, pos.y)).xyz) * 0.195346f + luminance(imageLoad(InputImgUI, ivec2(pos.x + shift, pos.y)).xyz) * 0.123317f +
+                                             luminance(imageLoad(InputImgUI, ivec2(pos.x - shift, pos.y + 1)).xyz) * 0.077847f + luminance(imageLoad(InputImgUI, ivec2(pos.x, pos.y + shift)).xyz) * 0.123317f + luminance(imageLoad(InputImgUI, ivec2(pos.x + shift, pos.y + shift)).xyz) * 0.077847f;
 
 
     }

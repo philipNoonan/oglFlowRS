@@ -6,6 +6,9 @@ void gFlow::compileAndLinkShader()
 {
 	try {
 
+		alignProg.compileShader("shaders/alignDepthColor.cs");
+		alignProg.link();
+
 		disFlowProg.compileShader("shaders/disFlow.cs");
 		disFlowProg.link();
 
@@ -51,6 +54,15 @@ void gFlow::compileAndLinkShader()
 }
 void gFlow::setLocations()
 {
+	// align 
+	alignProg.use();
+	m_d2cID = glGetUniformLocation(alignProg.getHandle(), "d2c");
+	m_camColorID = glGetUniformLocation(alignProg.getHandle(), "camColor");
+	m_camDepthID = glGetUniformLocation(alignProg.getHandle(), "camDepth");
+	m_depthScaleID = glGetUniformLocation(alignProg.getHandle(), "depthScale");
+
+
+
 	//sobel
 	m_subroutine_SobelID = glGetSubroutineUniformLocation(sobelProg.getHandle(), GL_COMPUTE_SHADER, "launchSubroutine"); // this is wrong
 	m_getGradientsID = glGetSubroutineIndex(sobelProg.getHandle(), GL_COMPUTE_SHADER, "getGradients");
@@ -210,6 +222,56 @@ void gFlow::setDepthTexture(std::vector<rs2::frame_queue> depthQ)
 	}
 }
 
+void gFlow::alignDepthColor(float depthScale, glm::mat4 d2c, glm::vec4 camDepth, glm::vec4 camColor, std::vector<uint16_t> &depthVec)
+{
+	if (depthVec.size() != m_texture_width * m_texture_height * 4)
+	{
+		depthVec.resize(m_texture_width * m_texture_height * 4);
+	}
+	alignProg.use();
+
+	glBindImageTexture(0, m_textureDepth, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R16UI);
+	glBindImageTexture(1, m_textureColor, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA8);
+
+	glBindImageTexture(2, m_textureAlignedDepth, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R16UI);
+	glBindImageTexture(3, m_textureAlignedColor, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA8);
+
+	glUniformMatrix4fv(m_d2cID, 1, GL_FALSE, glm::value_ptr(d2c));
+	glUniform4fv(m_camDepthID, 1, glm::value_ptr(camDepth));
+	glUniform4fv(m_camColorID, 1, glm::value_ptr(camColor));
+	glUniform1f(m_depthScaleID, depthScale);
+
+
+
+
+
+	glDispatchCompute(divup(m_texture_width, 32), divup(m_texture_height, 32), 1);
+	glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+
+
+
+		std::vector<unsigned char> testvec(848 * 480 * 4);
+glActiveTexture(GL_TEXTURE0);
+glBindTexture(GL_TEXTURE_2D, m_textureAlignedColor);
+glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_BYTE, testvec.data());
+glBindTexture(GL_TEXTURE_2D, 0);
+cv::Mat combo = cv::Mat(480, 848, CV_8UC4, testvec.data());
+cv::imshow("combined", combo);
+cv::waitKey(1);
+	
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, m_textureAlignedDepth);
+	glGetTexImage(GL_TEXTURE_2D, 0, GL_RED, GL_UNSIGNED_SHORT, depthVec.data());
+	glBindTexture(GL_TEXTURE_2D, 0);
+cv::Mat deppy = cv::Mat(480, 848, CV_16SC1, depthVec.data());
+cv::Mat deppy8;
+deppy.convertTo(deppy8, CV_8UC1, 1 / 256.0);
+cv::imshow("deppy", deppy8);
+cv::waitKey(1);
+
+
+}
+
 void gFlow::setColorTexture(std::vector<rs2::frame_queue> colorQ, cv::Mat &colorMat)
 {
 	rs2::frame colorFrame;
@@ -217,15 +279,68 @@ void gFlow::setColorTexture(std::vector<rs2::frame_queue> colorQ, cv::Mat &color
 	if (colorQ[0].poll_for_frame(&colorFrame)) //FIRST CAMERA ONLY
 	{
 
-		/*glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, m_textureI1);
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_texture_width, m_texture_height, GL_BGR, GL_UNSIGNED_BYTE, colorFrame.get_data());
-		glGenerateMipmap(GL_TEXTURE_2D);*/
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, m_textureColor);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_texture_width, m_texture_height, GL_RGBA, GL_UNSIGNED_BYTE, colorFrame.get_data());
 
 		if (colorFrame != NULL)
 		{
-			colorMat = cv::Mat(m_texture_height, m_texture_width, CV_8UC3, (void*)colorFrame.get_data());
+			colorMat = cv::Mat(m_texture_height, m_texture_width, CV_8UC4, (void*)colorFrame.get_data());
 			//std::memcpy(colorMat.ptr(), (void*)colorFrame.get_data(), m_texture_height * m_texture_width * 3);
+			//cv::imshow("col", colorMat);
+			//cv::waitKey(1);
+		}
+
+		glCopyImageSubData(m_textureColor, GL_TEXTURE_2D, 0, 0, 0, 0,
+			m_textureI1, GL_TEXTURE_2D, 0, 0, 0, 0,
+			m_texture_width, m_texture_height, 1);
+
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, m_textureI1);
+		glGenerateMipmap(GL_TEXTURE_2D);
+
+
+		if (firstFrame)
+		{
+
+			glCopyImageSubData(m_textureI1, GL_TEXTURE_2D, 0, 0, 0, 0,
+				m_textureI0, GL_TEXTURE_2D, 0, 0, 0, 0,
+				m_texture_width, m_texture_height, 1);
+			firstFrame = false;
+
+			//I1im.copyTo(I0im);
+		}
+
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, m_textureI0);
+		glGenerateMipmap(GL_TEXTURE_2D);
+
+		glMemoryBarrier(GL_ALL_BARRIER_BITS);
+
+	}
+}
+
+void gFlow::setInfraTexture(std::vector<rs2::frame_queue> infraQ, cv::Mat &infraMat)
+{
+	rs2::frame infraFrame;
+
+	if (infraQ[0].poll_for_frame(&infraFrame)) //FIRST CAMERA ONLY
+	{
+
+		//glActiveTexture(GL_TEXTURE1);
+		//glBindTexture(GL_TEXTURE_2D, m_textureI1);
+		//glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_texture_width, m_texture_height, GL_BGR, GL_UNSIGNED_BYTE, colorFrame.get_data());
+		//glGenerateMipmap(GL_TEXTURE_2D);
+
+		//glActiveTexture(GL_TEXTURE1);
+		//glBindTexture(GL_TEXTURE_2D, m_textureI1);
+		//glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_texture_width, m_texture_height, GL_RED, GL_UNSIGNED_BYTE, infraFrame.get_data());
+		//glGenerateMipmap(GL_TEXTURE_2D);
+
+
+		if (infraFrame != NULL)
+		{
+			infraMat = cv::Mat(m_texture_height, m_texture_width, CV_8UC1, (void*)infraFrame.get_data());
 			//cv::imshow("col", colorMat);
 			//cv::waitKey(1);
 		}
@@ -246,51 +361,6 @@ void gFlow::setColorTexture(std::vector<rs2::frame_queue> colorQ, cv::Mat &color
 		//glGenerateMipmap(GL_TEXTURE_2D);
 
 		//glMemoryBarrier(GL_ALL_BARRIER_BITS);
-
-	}
-}
-
-void gFlow::setInfraTexture(std::vector<rs2::frame_queue> infraQ, cv::Mat &infraMat)
-{
-	rs2::frame infraFrame;
-
-	if (infraQ[0].poll_for_frame(&infraFrame)) //FIRST CAMERA ONLY
-	{
-
-		//glActiveTexture(GL_TEXTURE1);
-		//glBindTexture(GL_TEXTURE_2D, m_textureI1);
-		//glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_texture_width, m_texture_height, GL_BGR, GL_UNSIGNED_BYTE, colorFrame.get_data());
-		//glGenerateMipmap(GL_TEXTURE_2D);
-
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, m_textureI1);
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_texture_width, m_texture_height, GL_RED, GL_UNSIGNED_BYTE, infraFrame.get_data());
-		glGenerateMipmap(GL_TEXTURE_2D);
-
-
-		if (infraFrame != NULL)
-		{
-			infraMat = cv::Mat(m_texture_height, m_texture_width, CV_8UC1, (void*)infraFrame.get_data());
-			//cv::imshow("col", colorMat);
-			//cv::waitKey(1);
-		}
-
-		if (firstFrame)
-		{
-
-			glCopyImageSubData(m_textureI1, GL_TEXTURE_2D, 0, 0, 0, 0,
-				m_textureI0, GL_TEXTURE_2D, 0, 0, 0, 0,
-				m_texture_width, m_texture_height, 1);
-			firstFrame = false;
-
-			//I1im.copyTo(I0im);
-		}
-
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, m_textureI0);
-		glGenerateMipmap(GL_TEXTURE_2D);
-
-		glMemoryBarrier(GL_ALL_BARRIER_BITS);
 
 	}
 }
@@ -655,12 +725,19 @@ void gFlow::allocateTextures(int nChn)
 	}
 	else
 	{
+		m_textureI0 = GLHelper::createTexture(m_textureI1, GL_TEXTURE_2D, m_numLevels, m_texture_width, m_texture_height, 0, GL_RGBA8, GL_LINEAR, GL_LINEAR_MIPMAP_NEAREST);
+		m_textureI1 = GLHelper::createTexture(m_textureI1, GL_TEXTURE_2D, m_numLevels, m_texture_width, m_texture_height, 0, GL_RGBA8, GL_LINEAR, GL_LINEAR_MIPMAP_NEAREST);
+
 		//m_textureI0 = createTexture(m_textureI0, GL_TEXTURE_2D, m_numLevels, m_texture_width, m_texture_height, 0, GL_RGBA8);
 		//m_textureI1 = createTexture(m_textureI1, GL_TEXTURE_2D, m_numLevels, m_texture_width, m_texture_height, 0, GL_RGBA8);
 	}
 
 	m_textureDepth = GLHelper::createTexture(m_textureDepth, GL_TEXTURE_2D, m_numLevels, m_texture_width, m_texture_height, 0, GL_R16, GL_NEAREST, GL_NEAREST_MIPMAP_NEAREST);
+	m_textureColor = GLHelper::createTexture(m_textureColor, GL_TEXTURE_2D, 1, m_texture_width, m_texture_height, 0, GL_RGBA8, GL_LINEAR, GL_LINEAR_MIPMAP_NEAREST);
+	m_textureAlignedColor = GLHelper::createTexture(m_textureAlignedColor, GL_TEXTURE_2D, 1, m_texture_width, m_texture_height, 0, GL_RGBA8, GL_LINEAR, GL_LINEAR_MIPMAP_NEAREST);
+	m_textureAlignedDepth = GLHelper::createTexture(m_textureAlignedDepth, GL_TEXTURE_2D, 1, m_texture_width, m_texture_height, 0, GL_R16, GL_NEAREST, GL_NEAREST_MIPMAP_NEAREST);
 
+	
 	m_textureI0_prod_xx_yy_xy_aux = GLHelper::createTexture(m_textureI0_prod_xx_yy_xy_aux, GL_TEXTURE_2D, m_numLevels, m_texture_width / m_patch_stride, m_texture_height, 0, GL_RGBA32F, GL_LINEAR, GL_LINEAR_MIPMAP_NEAREST);
 	m_textureI0_sum_x_y_aux = GLHelper::createTexture(m_textureI0_sum_x_y_aux, GL_TEXTURE_2D, m_numLevels, m_texture_width / m_patch_stride, m_texture_height, 0, GL_RG32F, GL_LINEAR, GL_LINEAR_MIPMAP_NEAREST);
 

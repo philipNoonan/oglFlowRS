@@ -57,6 +57,7 @@ public:
 	{
 		return m_textureDepth;
 	}
+	void alignDepthColor(float scale, glm::mat4 d2c, glm::vec4 camDepth, glm::vec4 camColor, std::vector<uint16_t> &colorVec);
 	void setColorTexture(std::vector<rs2::frame_queue> colorQ, cv::Mat &colorMat);
 	void setInfraTexture(std::vector<rs2::frame_queue> infraQ, cv::Mat &infraMat);
 	void computeSobel(int level, bool useInfrared);
@@ -92,7 +93,7 @@ public:
 	}
 	GLuint getColorTexture()
 	{
-		return m_textureI1;
+		return m_textureColor;
 	}
 	GLuint getEdgesTexture()
 	{
@@ -183,6 +184,7 @@ private:
 
 	inline int divup(int a, int b) { return (a % b != 0) ? (a / b + 1) : (a / b); }
 
+	GLSLProgram alignProg;
 	GLSLProgram disFlowProg;
 	GLSLProgram sobelProg;
 	GLSLProgram variRefineProg;
@@ -209,6 +211,10 @@ private:
 	GLuint m_makePatchesHorID;
 	GLuint m_makePatchesVerID;
 
+	GLuint m_d2cID;
+	GLuint m_camDepthID;
+	GLuint m_camColorID;
+	GLuint m_depthScaleID;
 
 	GLuint m_patchInverseSearchID;
 	GLuint m_patchInverseSearchDescentID;
@@ -305,6 +311,9 @@ private:
 	GLuint createTexture(GLuint ID, GLenum target, int levels, int w, int h, int d, GLuint internalformat);
 
 	GLuint m_textureDepth;
+	GLuint m_textureColor;
+	GLuint m_textureAlignedColor;
+	GLuint m_textureAlignedDepth;
 
 
 	GLuint m_textureI0_prod_xx_yy_xy;

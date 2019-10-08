@@ -53,6 +53,7 @@ void OPWrapper::capturingLoop()
 
 	op::ScaleMode scaleMode(op::ScaleMode::InputResolution);
 	op::ScaleMode heatMapScaleMode(op::ScaleMode::UnsignedChar);
+
 	int scaleNumber = 1;
 	float scaleGap = 0.3f;
 
@@ -134,6 +135,8 @@ void OPWrapper::capturingLoop()
 			}
 		}
 		m_mtx.unlock();
+
+		
 #ifdef USE_RENDER
 		poseRenderer.renderPose(outputArray, poseKeypoints, scaleInputToOutput, -1.0f, poseIds);
 #endif

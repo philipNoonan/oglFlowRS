@@ -228,7 +228,7 @@ void Realsense2Camera::setEmitterOptions(float status, float power)
 {
 	if (m_sensors[0].supports(RS2_OPTION_EMITTER_ENABLED))
 	{
-		m_sensors[0].set_option(RS2_OPTION_EMITTER_ENABLED, status);
+		m_sensors[0].set_option(RS2_OPTION_EMITTER_ENABLED, 1);
 	}
 
 	//if (m_sensors[devNumber].supports(RS2_OPTION_LASER_POWER))
@@ -492,7 +492,7 @@ uint32_t Realsense2Camera::getDepthUnit()
 
 	float depthScale = m_sensors[0].as<rs2::depth_sensor>().get_depth_scale();
 
-	return 100;
+	//return 100;
 
 	//std::cout << "depth scale : " << depthScale * 1e6 << std::endl;
 	return (uint32_t)(depthScale * 1000000.0f);
